@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="SahibindenClone.Application/SahibindenClone.Application.csproj" />
+  <Project Path="SahibindenClone.Domain/SahibindenClone.Domain.csproj" />
+  <Project Path="SahibindenClone.Infrastructure/SahibindenClone.Infrastructure.csproj" />
+  <Project Path="SahibindenClone.WebUI/SahibindenClone.WebUI.csproj" />
+</Solution>
