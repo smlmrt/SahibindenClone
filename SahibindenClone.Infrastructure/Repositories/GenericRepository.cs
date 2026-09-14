@@ -25,6 +25,7 @@ namespace SahibindenClone.Infrastructure.Repositories
             => await _dbSet.Where(predicate).ToListAsync();
             
         public async Task AddAsync(T entity) => await _dbSet.AddAsync(entity);
+        public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
         
         public void Update(T entity) => _dbSet.Update(entity);
         

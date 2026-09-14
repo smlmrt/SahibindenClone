@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ücretsiz İlan Ver - SahibindenClone</title>
+    <link rel="stylesheet" href="css/site.css" />
+    <style>
+        .form-container { background: white; padding: 20px; border: 1px solid #ddd; max-width: 600px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        .btn-submit { background-color: #1a56a8; color: white; border: none; padding: 10px 20px; cursor: pointer; border-radius: 4px; font-size: 16px; width: 100%; }
+        .btn-submit:hover { background-color: #124080; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">SahibindenClone</div>
+        <nav>
+            <a href="index.html">Ana Sayfa</a>
+        </nav>
+    </header>
+    
+    <div class="main-container">
+        <div class="form-container">
+            <h2>İlan Detaylarını Girin</h2>
+            <form id="postAdvertForm">
+                <div class="form-group">
+                    <label>İlan Başlığı</label>
+                    <input type="text" id="title" class="form-control" required placeholder="Örn: Sahibinden Temiz Araç">
+                </div>
+                <div class="form-group">
+                    <label>Açıklama</label>
+                    <textarea id="description" class="form-control" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Fiyat (TL)</label>
+                    <input type="number" id="price" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <!-- Şimdilik veritabanında 1 ID'li kategorinin olduğunu varsayıyoruz -->
+                    <select id="categoryId" class="form-control">
+                        <option value="1">Emlak</option>
+                        <option value="2">Vasıta</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-submit">İlanı Kaydet</button>
+            </form>
+            <div id="resultMessage" style="margin-top: 15px; font-weight: bold;"></div>
+        </div>
+    </div>
+
+    <script src="js/post-advert.js"></script>
+</body>
+</html>
