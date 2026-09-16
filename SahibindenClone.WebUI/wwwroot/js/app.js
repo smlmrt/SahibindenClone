@@ -12,24 +12,28 @@ async function fetchAdverts() {
         
         container.innerHTML = ''; // Yükleniyor yazısını temizle
         
+        if (adverts.length === 0) {
+            container.innerHTML = '<p style="padding:15px; color:#666;">Şu an vitrinde hiç ilan bulunmuyor.</p>';
+            return;
+        }
+        
         adverts.forEach(advert => {
-            const item = document.createElement('div');
-            item.className = 'advert-item';
+            const card = document.createElement('div');
+            card.className = 'advert-card';
             
-            // Fiyatı TL formatına çevir
             const priceFormatted = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(advert.price);
 
-            item.innerHTML = `
-                <div>
-                    <strong>${advert.title}</strong>
-                    <div style="font-size: 0.85em; color: #777;">${advert.categoryName} - ${advert.userName}</div>
-                </div>
-                <div class="price">${priceFormatted}</div>
+            card.innerHTML = `
+                <div class="advert-image">Görsel Yok</div>
+                <a href="#" class="advert-title" title="${advert.title}">${advert.title}</a>
+                <div class="advert-price">${priceFormatted}</div>
+                <div class="advert-meta">${advert.categoryName} • ${advert.userName}</div>
             `;
-            container.appendChild(item);
+            container.appendChild(card);
         });
     } catch (error) {
         console.error("Hata:", error);
-        document.getElementById('advertList').innerText = "İlanlar yüklenirken bir hata oluştu.";
+        document.getElementById('advertList').innerHTML = 
+            '<p style="color:#d0021b; padding:15px;">İlanlar yüklenirken bir hata oluştu. Lütfen projeyi "Live Server" ile değil, .NET üzerinden çalıştırdığınızdan emin olun.</p>';
     }
 }

@@ -3,30 +3,34 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SahibindenClone API</title>
+    <title>SahibindenClone</title>
     <link rel="stylesheet" href="css/site.css" />
 </head>
 <body>
     <header class="header">
-        <div class="logo">SahibindenClone</div>
-        <nav>
-            <a href="index.html">Ana Sayfa</a>
-            <a href="post-advert.html" class="btn-post" style="text-decoration:none;">Ücretsiz İlan Ver</a>
-        </nav>
+        <div class="header-container">
+            <a href="index.html" class="logo">SahibindenClone</a>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-item">Ana Sayfa</a>
+                <a href="post-advert.html" class="btn-post">Ücretsiz İlan Ver</a>
+            </nav>
+        </div>
     </header>
     
     <div class="main-container">
         <aside class="sidebar">
             <h3>Kategoriler</h3>
             <ul id="categoryList">
-                <li>Emlak</li>
-                <li>Vasıta</li>
+                <li><a href="#">Emlak</a></li>
+                <li><a href="#">Vasıta</a></li>
+                <li><a href="#">İkinci El ve Sıfır Alışveriş</a></li>
             </ul>
         </aside>
         <main class="content">
             <h2>Vitrin İlanları</h2>
             <div id="advertList" class="advert-list">
-                <!-- İlanlar JavaScript ile buraya yüklenecek -->
+                <!-- Veriler yüklenirken gösterilecek -->
+                <p style="padding: 15px; color: #666;">İlanlar yükleniyor...</p>
             </div>
         </main>
     </div>
