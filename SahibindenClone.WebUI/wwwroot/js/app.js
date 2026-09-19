@@ -22,10 +22,16 @@ async function fetchAdverts() {
             card.className = 'advert-card';
             
             const priceFormatted = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(advert.price);
+            
+            // Görsel kontrolü
+            const imageHtml = advert.imageUrl 
+                ? `<img src="${advert.imageUrl}" style="width:100%; height:140px; object-fit:cover;" />` 
+                : `Görsel Yok`;
 
+            // a href kısmını advert-detail.html'e yönlendirecek şekilde güncelledik
             card.innerHTML = `
-                <div class="advert-image">Görsel Yok</div>
-                <a href="#" class="advert-title" title="${advert.title}">${advert.title}</a>
+                <div class="advert-image">${imageHtml}</div>
+                <a href="advert-detail.html?id=${advert.id}" class="advert-title" title="${advert.title}">${advert.title}</a>
                 <div class="advert-price">${priceFormatted}</div>
                 <div class="advert-meta">${advert.categoryName} • ${advert.userName}</div>
             `;

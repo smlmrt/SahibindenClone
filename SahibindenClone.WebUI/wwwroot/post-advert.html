@@ -6,7 +6,7 @@
     <title>Ücretsiz İlan Ver - SahibindenClone</title>
     <link rel="stylesheet" href="css/site.css" />
     <style>
-        .form-container { background: white; padding: 20px; border: 1px solid #ddd; max-width: 600px; margin: 0 auto; }
+        .form-container { background: white; padding: 20px; border: 1px solid #ddd; max-width: 600px; margin: 20px auto; border-radius: 4px; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
         .form-control { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
@@ -16,10 +16,12 @@
 </head>
 <body>
     <header class="header">
-        <div class="logo">SahibindenClone</div>
-        <nav>
-            <a href="index.html">Ana Sayfa</a>
-        </nav>
+        <div class="header-container">
+            <a href="index.html" class="logo">SahibindenClone</a>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-item">Ana Sayfa</a>
+            </nav>
+        </div>
     </header>
     
     <div class="main-container">
@@ -40,11 +42,15 @@
                 </div>
                 <div class="form-group">
                     <label>Kategori</label>
-                    <!-- Şimdilik veritabanında 1 ID'li kategorinin olduğunu varsayıyoruz -->
                     <select id="categoryId" class="form-control">
                         <option value="1">Emlak</option>
                         <option value="2">Vasıta</option>
                     </select>
+                </div>
+                <!-- YENİ EKLENEN GÖRSEL YÜKLEME ALANI -->
+                <div class="form-group">
+                    <label>Görsel Yükle</label>
+                    <input type="file" id="image" class="form-control" accept="image/*">
                 </div>
                 <button type="submit" class="btn-submit">İlanı Kaydet</button>
             </form>

@@ -1,26 +1,26 @@
 document.getElementById('postAdvertForm').addEventListener('submit', async function(e) {
     e.preventDefault(); // Sayfanın yenilenmesini engeller
 
-    // Formdaki verileri alıp DTO'ya uygun hale getiriyoruz
-    const advertData = {
-        title: document.getElementById('title').value,
-        description: document.getElementById('description').value,
-        price: parseFloat(document.getElementById('price').value),
-        categoryId: parseInt(document.getElementById('categoryId').value),
-        userId: 1 // Test amaçlı 1 numaralı kullanıcıyı gönderiyoruz
-    };
+    // Verileri FormData objesine ekliyoruz (Görsel yükleme için zorunlu format)
+    const formData = new FormData();
+    formData.append("Title", document.getElementById('title').value);
+    formData.append("Description", document.getElementById('description').value);
+    formData.append("Price", document.getElementById('price').value);
+    formData.append("CategoryId", document.getElementById('categoryId').value);
+    formData.append("UserId", 1); // Test amaçlı 1 numaralı kullanıcı
+
+    // Görsel dosyasını alıp FormData'ya ekliyoruz
+    const imageFile = document.getElementById('image').files[0];
+    if (imageFile) {
+        formData.append("image", imageFile);
+    }
 
     try {
-        // API'mizin POST metoduna veriyi gönderiyoruz
+        // Fetch API ile FormData'yı POST ediyoruz. (Content-Type otomatik olarak ayarlanır)
         const response = await fetch('/api/adverts', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(advertData)
+            body: formData
         });
-
-        const result = await response.json();
 
         if (response.ok) {
             document.getElementById('resultMessage').style.color = "green";
