@@ -3,7 +3,10 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SahibindenClone</title>
+    <title>SahibindenClone — İlan ve Alışveriş Platformu</title>
+    <meta name="description" content="Sahibinden Clone — Emlak, vasıta ve ikinci el ürünlerde en uygun ilanları bulun." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/site.css" />
 </head>
 <body>
@@ -21,17 +24,34 @@
         <aside class="sidebar">
             <h3>Kategoriler</h3>
             <ul id="categoryList">
-                <li><a href="#">Emlak</a></li>
-                <li><a href="#">Vasıta</a></li>
-                <li><a href="#">İkinci El ve Sıfır Alışveriş</a></li>
+                <li><a href="#" class="active" data-category-id="">Tümü</a></li>
+                <!-- Kategoriler API'den yüklenecek -->
             </ul>
         </aside>
         <main class="content">
-            <h2>Vitrin İlanları</h2>
+            <!-- Arama & Filtre Çubuğu -->
+            <div class="search-filter-bar">
+                <div class="search-row">
+                    <input type="text" id="searchInput" class="search-input" placeholder="İlanlarda ara... (ör: araba, ev, telefon)">
+                    <button id="searchBtn" class="search-btn">Ara</button>
+                </div>
+                <div class="filter-row">
+                    <span class="filter-label">Fiyat:</span>
+                    <input type="number" id="minPrice" class="filter-input" placeholder="Min ₺">
+                    <span class="filter-label">—</span>
+                    <input type="number" id="maxPrice" class="filter-input" placeholder="Max ₺">
+                    <button id="filterBtn" class="filter-btn">Filtrele</button>
+                    <button id="clearFilterBtn" class="filter-clear-btn">Temizle</button>
+                </div>
+            </div>
+
+            <h2 id="pageTitle">Vitrin İlanları</h2>
             <div id="advertList" class="advert-list">
-                <!-- Veriler yüklenirken gösterilecek -->
                 <p style="padding: 15px; color: #666;">İlanlar yükleniyor...</p>
             </div>
+
+            <!-- Sayfalama -->
+            <div id="pagination" class="pagination" style="display:none;"></div>
         </main>
     </div>
 

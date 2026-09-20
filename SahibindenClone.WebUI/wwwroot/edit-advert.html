@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Ücretsiz İlan Ver - SahibindenClone</title>
+    <title>İlan Düzenle - SahibindenClone</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/site.css" />
@@ -23,6 +23,17 @@
             margin-bottom: 24px;
             padding-bottom: 16px;
             border-bottom: 2px solid #f0f2f5;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .form-container h2 .badge {
+            font-size: 12px;
+            background: #eff6ff;
+            color: #2563eb;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 600;
         }
         .form-group { margin-bottom: 20px; }
         .form-group label {
@@ -46,7 +57,9 @@
             border-color: #2563eb;
             box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
         }
+        .btn-row { display: flex; gap: 10px; }
         .btn-submit {
+            flex: 1;
             background: linear-gradient(135deg, #1e40af, #3b82f6);
             color: white;
             border: none;
@@ -55,7 +68,6 @@
             border-radius: 10px;
             font-size: 16px;
             font-weight: 700;
-            width: 100%;
             transition: all .25s;
             box-shadow: 0 4px 14px rgba(37,99,235,0.25);
         }
@@ -63,7 +75,20 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(37,99,235,0.35);
         }
-        .btn-submit:active { transform: translateY(0); }
+        .btn-cancel {
+            padding: 14px 24px;
+            background: #f3f4f6;
+            color: #374151;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background .2s;
+            text-decoration: none;
+            text-align: center;
+        }
+        .btn-cancel:hover { background: #e5e7eb; }
         #resultMessage {
             margin-top: 16px;
             padding: 12px 16px;
@@ -74,26 +99,39 @@
         }
         #resultMessage.success { display: block; background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
         #resultMessage.error { display: block; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-        .file-input-wrapper {
-            position: relative;
-            border: 2px dashed #e5e7eb;
+        .current-image {
+            margin-top: 8px;
+            padding: 12px;
+            background: #f8fafc;
             border-radius: 10px;
-            padding: 24px;
             text-align: center;
-            cursor: pointer;
-            transition: all .2s;
         }
-        .file-input-wrapper:hover { border-color: #2563eb; background: #eff6ff; }
-        .file-input-wrapper input[type="file"] {
-            position: absolute;
-            inset: 0;
-            opacity: 0;
-            cursor: pointer;
+        .current-image img {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 8px;
+            object-fit: cover;
         }
-        .file-input-wrapper .file-text { font-size: 14px; color: #6b7280; }
-        .file-input-wrapper .file-text strong { color: #2563eb; }
-        .file-preview { margin-top: 12px; }
-        .file-preview img { max-width: 200px; max-height: 150px; border-radius: 8px; object-fit: cover; }
+        .current-image p {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 6px;
+        }
+        .loading-form {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+        }
+        .loading-form .spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -107,44 +145,14 @@
     </header>
     
     <div class="main-container" style="justify-content: center;">
-        <div class="form-container">
-            <h2>Ücretsiz İlan Ver</h2>
-            <form id="postAdvertForm">
-                <div class="form-group">
-                    <label>İlan Başlığı</label>
-                    <input type="text" id="title" class="form-control" required placeholder="Örn: Sahibinden Temiz Araç">
-                </div>
-                <div class="form-group">
-                    <label>Açıklama</label>
-                    <textarea id="description" class="form-control" rows="4" required placeholder="İlanınızın detaylı açıklamasını yazın..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label>Fiyat (TL)</label>
-                    <input type="number" id="price" class="form-control" required placeholder="0">
-                </div>
-                <div class="form-group">
-                    <label>Kategori</label>
-                    <select id="categoryId" class="form-control">
-                        <option value="">Kategori yükleniyor...</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Görsel Yükle</label>
-                    <div class="file-input-wrapper" id="fileWrapper">
-                        <input type="file" id="image" accept="image/*">
-                        <div class="file-text">
-                            <strong>Dosya seçmek için tıklayın</strong><br>
-                            veya sürükleyip bırakın (JPG, PNG, max 5MB)
-                        </div>
-                    </div>
-                    <div class="file-preview" id="filePreview"></div>
-                </div>
-                <button type="submit" class="btn-submit">İlanı Yayınla</button>
-            </form>
-            <div id="resultMessage"></div>
+        <div class="form-container" id="formContainer">
+            <div class="loading-form">
+                <div class="spinner"></div>
+                <p>İlan bilgileri yükleniyor...</p>
+            </div>
         </div>
     </div>
 
-    <script src="js/post-advert.js"></script>
+    <script src="js/edit-advert.js"></script>
 </body>
 </html>

@@ -99,6 +99,18 @@ function renderAdvert(advert) {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
                     İletişime Geç
                 </button>
+
+                <!-- Düzenleme & Silme Butonları -->
+                <div class="action-buttons">
+                    <a href="edit-advert.html?id=${advert.id}" class="btn-edit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Düzenle
+                    </a>
+                    <button class="btn-delete" onclick="confirmDelete(${advert.id})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        Sil
+                    </button>
+                </div>
             </div>
 
             <div class="info-card fade-up fade-up-delay-2">
@@ -131,6 +143,52 @@ function renderAdvert(advert) {
     `;
 }
 
+// ═══════════════ İLAN SİLME ═══════════════
+function confirmDelete(id) {
+    // Modal oluştur
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+        <div class="modal-box">
+            <h3>İlanı Sil</h3>
+            <p>Bu ilanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.</p>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="this.closest('.modal-overlay').remove()">Vazgeç</button>
+                <button class="modal-confirm" id="confirmDeleteBtn">Evet, Sil</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Overlay'a tıklayınca kapat
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.remove();
+    });
+
+    // Sil butonuna tıklayınca
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
+        try {
+            const response = await fetch(`/api/adverts/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                overlay.querySelector('.modal-box').innerHTML = `
+                    <h3 style="color: #059669;">İlan Silindi!</h3>
+                    <p>Ana sayfaya yönlendiriliyorsunuz...</p>
+                `;
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            } else {
+                overlay.querySelector('.modal-box p').textContent = 'Silme işlemi başarısız oldu.';
+                overlay.querySelector('.modal-box p').style.color = '#ef4444';
+            }
+        } catch (error) {
+            console.error('Silme hatası:', error);
+            overlay.querySelector('.modal-box p').textContent = 'Sunucuya ulaşılamadı.';
+        }
+    });
+}
+
+// ═══════════════ HATA GÖSTER ═══════════════
 function showError(message) {
     document.getElementById('detailContent').innerHTML = `
         <div class="error-state">
@@ -146,7 +204,7 @@ function showError(message) {
     `;
 }
 
-// Yardımcı fonksiyonlar
+// ═══════════════ YARDIMCI FONKSİYONLAR ═══════════════
 function getInitials(name) {
     if (!name) return '?';
     return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
