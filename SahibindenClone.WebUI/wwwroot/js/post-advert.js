@@ -59,24 +59,53 @@ function setupImagePreview() {
     });
 }
 
+// ═══════════════ CLIENT-SIDE DOSYA DOĞRULAMA ═══════════════
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+function validateImageFile(file) {
+    if (!file) return null;
+
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        return `Desteklenmeyen dosya türü: ${ext}. İzin verilen: ${ALLOWED_EXTENSIONS.join(', ')}`;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+        return `Görsel boyutu en fazla 5MB olabilir. Yüklenen: ${(file.size / (1024 * 1024)).toFixed(1)}MB`;
+    }
+
+    return null;
+}
+
 // ═══════════════ FORM GÖNDER ═══════════════
 document.getElementById('postAdvertForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
+    // Client-side validasyonlar
+    const title = document.getElementById('title').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const price = document.getElementById('price').value;
     const categoryId = document.getElementById('categoryId').value;
-    if (!categoryId) {
-        showMessage('Lütfen bir kategori seçin.', 'error');
-        return;
-    }
+
+    if (title.length < 3) { showMessage('Başlık en az 3 karakter olmalıdır.', 'error'); return; }
+    if (title.length > 150) { showMessage('Başlık en fazla 150 karakter olabilir.', 'error'); return; }
+    if (description.length < 10) { showMessage('Açıklama en az 10 karakter olmalıdır.', 'error'); return; }
+    if (!price || parseFloat(price) < 0) { showMessage('Geçerli bir fiyat giriniz.', 'error'); return; }
+    if (!categoryId) { showMessage('Lütfen bir kategori seçin.', 'error'); return; }
+
+    // Görsel validasyonu
+    const imageFile = document.getElementById('image').files[0];
+    const imageError = validateImageFile(imageFile);
+    if (imageError) { showMessage(imageError, 'error'); return; }
 
     const formData = new FormData();
-    formData.append("Title", document.getElementById('title').value);
-    formData.append("Description", document.getElementById('description').value);
-    formData.append("Price", document.getElementById('price').value);
+    formData.append("Title", title);
+    formData.append("Description", description);
+    formData.append("Price", price);
     formData.append("CategoryId", categoryId);
     formData.append("UserId", 1); // Test amaçlı 1 numaralı kullanıcı
 
-    const imageFile = document.getElementById('image').files[0];
     if (imageFile) {
         formData.append("image", imageFile);
     }
@@ -93,7 +122,9 @@ document.getElementById('postAdvertForm').addEventListener('submit', async funct
                 window.location.href = "index.html";
             }, 2000);
         } else {
-            showMessage("Hata: İlan eklenemedi.", "error");
+            const errorData = await response.json().catch(() => null);
+            const errorMsg = errorData?.errors?.join('\n') || "Hata: İlan eklenemedi.";
+            showMessage(errorMsg, "error");
         }
     } catch (error) {
         console.error("Hata:", error);

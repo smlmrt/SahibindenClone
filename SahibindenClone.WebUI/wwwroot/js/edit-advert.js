@@ -81,7 +81,7 @@ function renderEditForm(advert, categories) {
             </div>
             <div class="form-group">
                 <label>Yeni Görsel (opsiyonel)</label>
-                <input type="file" id="image" class="form-control" accept="image/*">
+                <input type="file" id="image" class="form-control" accept=".jpg,.jpeg,.png,.webp">
                 ${currentImageHtml}
             </div>
             <div class="btn-row">
@@ -99,15 +99,50 @@ function renderEditForm(advert, categories) {
     });
 }
 
+// ═══════════════ CLIENT-SIDE DOSYA DOĞRULAMA ═══════════════
+const ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+function validateImageFile(file) {
+    if (!file) return null;
+
+    const ext = '.' + file.name.split('.').pop().toLowerCase();
+    if (!ALLOWED_EXTENSIONS.includes(ext)) {
+        return `Desteklenmeyen dosya türü: ${ext}. İzin verilen: ${ALLOWED_EXTENSIONS.join(', ')}`;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+        return `Görsel boyutu en fazla 5MB olabilir. Yüklenen: ${(file.size / (1024 * 1024)).toFixed(1)}MB`;
+    }
+
+    return null;
+}
+
 // ═══════════════ DÜZENLEME GÖNDER ═══════════════
 async function submitEdit(id) {
-    const formData = new FormData();
-    formData.append("Title", document.getElementById('title').value);
-    formData.append("Description", document.getElementById('description').value);
-    formData.append("Price", document.getElementById('price').value);
-    formData.append("CategoryId", document.getElementById('categoryId').value);
+    // Client-side validasyonlar
+    const title = document.getElementById('title').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const price = document.getElementById('price').value;
+    const categoryId = document.getElementById('categoryId').value;
 
+    if (title.length < 3) { showMessage('Başlık en az 3 karakter olmalıdır.', 'error'); return; }
+    if (title.length > 150) { showMessage('Başlık en fazla 150 karakter olabilir.', 'error'); return; }
+    if (description.length < 10) { showMessage('Açıklama en az 10 karakter olmalıdır.', 'error'); return; }
+    if (!price || parseFloat(price) < 0) { showMessage('Geçerli bir fiyat giriniz.', 'error'); return; }
+    if (!categoryId) { showMessage('Lütfen bir kategori seçin.', 'error'); return; }
+
+    // Görsel validasyonu
     const imageFile = document.getElementById('image').files[0];
+    const imageError = validateImageFile(imageFile);
+    if (imageError) { showMessage(imageError, 'error'); return; }
+
+    const formData = new FormData();
+    formData.append("Title", title);
+    formData.append("Description", description);
+    formData.append("Price", price);
+    formData.append("CategoryId", categoryId);
+
     if (imageFile) {
         formData.append("image", imageFile);
     }
@@ -124,7 +159,9 @@ async function submitEdit(id) {
                 window.location.href = `advert-detail.html?id=${id}`;
             }, 1500);
         } else {
-            showMessage("Hata: İlan güncellenemedi.", "error");
+            const errorData = await response.json().catch(() => null);
+            const errorMsg = errorData?.errors?.join('\n') || "Hata: İlan güncellenemedi.";
+            showMessage(errorMsg, "error");
         }
     } catch (error) {
         console.error("Hata:", error);

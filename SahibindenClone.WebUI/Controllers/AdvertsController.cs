@@ -11,6 +11,11 @@ namespace SahibindenClone.WebUI.Controllers
         private readonly IAdvertRepository _advertRepository;
         private readonly IWebHostEnvironment _env;
 
+        // ──── İzin verilen dosya türleri ve maksimum boyut ────
+        private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
+        private static readonly string[] AllowedMimeTypes = { "image/jpeg", "image/png", "image/webp" };
+        private const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
+
         public AdvertsController(IAdvertRepository advertRepository, IWebHostEnvironment env)
         {
             _advertRepository = advertRepository;
@@ -90,10 +95,17 @@ namespace SahibindenClone.WebUI.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateAdvert([FromForm] AdvertCreateDto dto, IFormFile? image)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(new { Errors = GetValidationErrors() });
+
             string? imageUrl = null;
 
             if (image != null && image.Length > 0)
             {
+                var imageValidation = ValidateImage(image);
+                if (imageValidation != null)
+                    return BadRequest(new { Errors = new[] { imageValidation } });
+
                 imageUrl = await SaveImageAsync(image);
             }
 
@@ -121,6 +133,9 @@ namespace SahibindenClone.WebUI.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateAdvert(int id, [FromForm] AdvertUpdateDto dto, IFormFile? image)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(new { Errors = GetValidationErrors() });
+
             var advert = await _advertRepository.GetByIdAsync(id);
             if (advert == null || !advert.IsActive)
                 return NotFound("İlan bulunamadı.");
@@ -135,6 +150,10 @@ namespace SahibindenClone.WebUI.Controllers
             // Yeni görsel yüklendiyse güncelle
             if (image != null && image.Length > 0)
             {
+                var imageValidation = ValidateImage(image);
+                if (imageValidation != null)
+                    return BadRequest(new { Errors = new[] { imageValidation } });
+
                 // Eski görseli sil (varsa)
                 if (!string.IsNullOrEmpty(advert.ImageUrl))
                 {
@@ -173,13 +192,51 @@ namespace SahibindenClone.WebUI.Controllers
             return Ok(new { Message = "İlan başarıyla silindi." });
         }
 
-        // ──── Yardımcı metod: Görsel kaydetme ────
+        // ──── Yardımcı: Görsel dosya validasyonu ────
+        private static string? ValidateImage(IFormFile image)
+        {
+            // Boyut kontrolü (max 5MB)
+            if (image.Length > MaxFileSize)
+            {
+                var sizeMB = MaxFileSize / (1024 * 1024);
+                return $"Görsel boyutu en fazla {sizeMB}MB olabilir. Yüklenen: {image.Length / (1024.0 * 1024.0):F1}MB";
+            }
+
+            // Dosya uzantısı kontrolü
+            var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
+            if (!AllowedExtensions.Contains(extension))
+            {
+                return $"Desteklenmeyen dosya türü: {extension}. İzin verilen türler: {string.Join(", ", AllowedExtensions)}";
+            }
+
+            // MIME type kontrolü (uzantı spoofing'e karşı)
+            if (!AllowedMimeTypes.Contains(image.ContentType.ToLowerInvariant()))
+            {
+                return $"Desteklenmeyen dosya içerik türü: {image.ContentType}. İzin verilen: {string.Join(", ", AllowedMimeTypes)}";
+            }
+
+            return null; // Geçerli
+        }
+
+        // ──── Yardımcı: ModelState hatalarını düzgün formatta döndür ────
+        private List<string> GetValidationErrors()
+        {
+            return ModelState.Values
+                .SelectMany(v => v.Errors)
+                .Select(e => e.ErrorMessage)
+                .Where(msg => !string.IsNullOrEmpty(msg))
+                .ToList();
+        }
+
+        // ──── Yardımcı: Görsel kaydetme ────
         private async Task<string> SaveImageAsync(IFormFile image)
         {
             var uploadsFolder = Path.Combine(_env.WebRootPath, "images");
             if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-            var uniqueFileName = Guid.NewGuid().ToString() + "_" + image.FileName;
+            // Güvenli dosya adı: GUID + orijinal uzantı
+            var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
+            var uniqueFileName = Guid.NewGuid().ToString() + extension;
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);
 
             using (var fileStream = new FileStream(filePath, FileMode.Create))
