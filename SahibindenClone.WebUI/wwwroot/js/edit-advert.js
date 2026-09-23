@@ -147,10 +147,16 @@ async function submitEdit(id) {
         formData.append("image", imageFile);
     }
 
+    // Token'ı localStorage'dan alıyoruz
+    const token = localStorage.getItem('token');
+
     try {
         const response = await fetch(`/api/adverts/${id}`, {
             method: 'PUT',
-            body: formData
+            body: formData,
+            headers: {
+                'Authorization': `Bearer ${token}` // Token eklendi
+            }
         });
 
         if (response.ok) {
@@ -160,8 +166,13 @@ async function submitEdit(id) {
             }, 1500);
         } else {
             const errorData = await response.json().catch(() => null);
-            const errorMsg = errorData?.errors?.join('\n') || "Hata: İlan güncellenemedi.";
-            showMessage(errorMsg, "error");
+            // 403 Forbidden veya 401 Unauthorized hataları için özel mesaj
+            if (response.status === 401 || response.status === 403) {
+                showMessage("Bu ilanı düzenleme yetkiniz yok.", "error");
+            } else {
+                const errorMsg = errorData?.errors?.join('\n') || errorData?.message || "Hata: İlan güncellenemedi.";
+                showMessage(errorMsg, "error");
+            }
         }
     } catch (error) {
         console.error("Hata:", error);

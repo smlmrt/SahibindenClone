@@ -79,8 +79,17 @@ function validateImageFile(file) {
 }
 
 // ═══════════════ FORM GÖNDER ═══════════════
-document.getElementById('postAdvertForm').addEventListener('submit', async function(e) {
+document.getElementById('postAdvertForm').addEventListener('submit', async function (e) {
     e.preventDefault();
+
+    // 1. GİRİŞ KONTROLÜ
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        showMessage("İlan verebilmek için giriş yapmalısınız. Yönlendiriliyorsunuz...", "error");
+        setTimeout(() => { window.location.href = "login.html"; }, 2000);
+        return;
+    }
 
     // Client-side validasyonlar
     const title = document.getElementById('title').value.trim();
@@ -104,7 +113,6 @@ document.getElementById('postAdvertForm').addEventListener('submit', async funct
     formData.append("Description", description);
     formData.append("Price", price);
     formData.append("CategoryId", categoryId);
-    formData.append("UserId", 1); // Test amaçlı 1 numaralı kullanıcı
 
     if (imageFile) {
         formData.append("image", imageFile);
@@ -113,7 +121,10 @@ document.getElementById('postAdvertForm').addEventListener('submit', async funct
     try {
         const response = await fetch('/api/adverts', {
             method: 'POST',
-            body: formData
+            body: formData,
+            headers: {
+                'Authorization': `Bearer ${token}` // Token eklendi
+            }
         });
 
         if (response.ok) {

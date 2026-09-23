@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SahibindenClone.Application.Interfaces;
 using SahibindenClone.Application.DTOs;
+using SahibindenClone.Application.Interfaces;
+using System.Security.Claims;
 
 namespace SahibindenClone.WebUI.Controllers
 {
@@ -22,10 +24,7 @@ namespace SahibindenClone.WebUI.Controllers
             _env = env;
         }
 
-        /// <summary>
-        /// İlan listesi — Arama, Filtreleme, Sayfalama destekli
-        /// GET /api/adverts?search=araba&categoryId=2&minPrice=100&maxPrice=5000&page=1&pageSize=20
-        /// </summary>
+        // İlan listesi — Arama, Filtreleme, Sayfalama destekli
         [HttpGet]
         public async Task<IActionResult> GetAdverts(
             [FromQuery] string? search,
@@ -35,7 +34,6 @@ namespace SahibindenClone.WebUI.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            // Geçerlilik kontrolleri
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
             if (pageSize > 100) pageSize = 100;
@@ -65,9 +63,7 @@ namespace SahibindenClone.WebUI.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// İlan detayı — GET /api/adverts/{id}
-        /// </summary>
+        // İlan detayı — GET /api/adverts/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetAdvertById(int id)
         {
@@ -84,14 +80,14 @@ namespace SahibindenClone.WebUI.Controllers
                 CategoryId = advert.CategoryId,
                 CategoryName = advert.Category?.Name ?? "Kategorisiz",
                 UserName = $"{advert.User?.FirstName} {advert.User?.LastName}",
+                UserId = advert.UserId, // Frontend yetki (Sahiplik) kontrolü için eklendi
                 CreatedAt = advert.CreatedAt,
                 ImageUrl = advert.ImageUrl
             });
         }
 
-        /// <summary>
-        /// İlan oluşturma — POST /api/adverts
-        /// </summary>
+        // İlan oluşturma — POST /api/adverts
+        [Authorize]
         [HttpPost]
         public async Task<IActionResult> CreateAdvert([FromForm] AdvertCreateDto dto, IFormFile? image)
         {
@@ -109,13 +105,18 @@ namespace SahibindenClone.WebUI.Controllers
                 imageUrl = await SaveImageAsync(image);
             }
 
+            // UserId'yi token'dan al — client'a güvenme!
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+                return Unauthorized(new { Message = "Geçersiz kullanıcı bilgisi." });
+
             var newAdvert = new Domain.Entities.Advert
             {
                 Title = dto.Title,
                 Description = dto.Description,
                 Price = dto.Price,
                 CategoryId = dto.CategoryId,
-                UserId = dto.UserId,
+                UserId = userId,
                 ImageUrl = imageUrl,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true
@@ -127,9 +128,8 @@ namespace SahibindenClone.WebUI.Controllers
             return Ok(new { Message = "İlan başarıyla oluşturuldu!", Id = newAdvert.Id });
         }
 
-        /// <summary>
-        /// İlan güncelleme — PUT /api/adverts/{id}
-        /// </summary>
+        // İlan güncelleme — PUT /api/adverts/{id}
+        [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateAdvert(int id, [FromForm] AdvertUpdateDto dto, IFormFile? image)
         {
@@ -138,7 +138,12 @@ namespace SahibindenClone.WebUI.Controllers
 
             var advert = await _advertRepository.GetByIdAsync(id);
             if (advert == null || !advert.IsActive)
-                return NotFound("İlan bulunamadı.");
+                return NotFound(new { Message = "İlan bulunamadı." });
+
+            // Sahiplik Kontrolü Düzeltmesi (Claim nesnesinin .Value özelliğine erişildi)
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (advert.UserId.ToString() != userId)
+                return StatusCode(403, new { Message = "Bu ilanı düzenleme yetkiniz yok." });
 
             // Alanları güncelle
             advert.Title = dto.Title;
@@ -172,17 +177,22 @@ namespace SahibindenClone.WebUI.Controllers
             return Ok(new { Message = "İlan başarıyla güncellendi!" });
         }
 
-        /// <summary>
-        /// İlan silme (soft delete) — DELETE /api/adverts/{id}
-        /// </summary>
+
+        // İlan silme (soft delete) — DELETE /api/adverts/{id}
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAdvert(int id)
         {
             var advert = await _advertRepository.GetByIdAsync(id);
             if (advert == null || !advert.IsActive)
-                return NotFound("İlan bulunamadı.");
+                return NotFound(new { Message = "İlan bulunamadı." });
 
-            // Soft delete — veritabanından silmez, IsActive = false yapar
+            // Sahiplik Kontrolü Düzeltmesi
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (advert.UserId.ToString() != userId)
+                return StatusCode(403, new { Message = "Bu ilanı silme yetkiniz yok." });
+
+            // Soft delete
             advert.IsActive = false;
             advert.UpdatedAt = DateTime.UtcNow;
 
@@ -195,30 +205,27 @@ namespace SahibindenClone.WebUI.Controllers
         // ──── Yardımcı: Görsel dosya validasyonu ────
         private static string? ValidateImage(IFormFile image)
         {
-            // Boyut kontrolü (max 5MB)
             if (image.Length > MaxFileSize)
             {
                 var sizeMB = MaxFileSize / (1024 * 1024);
                 return $"Görsel boyutu en fazla {sizeMB}MB olabilir. Yüklenen: {image.Length / (1024.0 * 1024.0):F1}MB";
             }
 
-            // Dosya uzantısı kontrolü
             var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
             if (!AllowedExtensions.Contains(extension))
             {
                 return $"Desteklenmeyen dosya türü: {extension}. İzin verilen türler: {string.Join(", ", AllowedExtensions)}";
             }
 
-            // MIME type kontrolü (uzantı spoofing'e karşı)
             if (!AllowedMimeTypes.Contains(image.ContentType.ToLowerInvariant()))
             {
                 return $"Desteklenmeyen dosya içerik türü: {image.ContentType}. İzin verilen: {string.Join(", ", AllowedMimeTypes)}";
             }
 
-            return null; // Geçerli
+            return null;
         }
 
-        // ──── Yardımcı: ModelState hatalarını düzgün formatta döndür ────
+        // ──── Yardımcı: ModelState hatalarını formatla ────
         private List<string> GetValidationErrors()
         {
             return ModelState.Values
@@ -234,7 +241,6 @@ namespace SahibindenClone.WebUI.Controllers
             var uploadsFolder = Path.Combine(_env.WebRootPath, "images");
             if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
 
-            // Güvenli dosya adı: GUID + orijinal uzantı
             var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
             var uniqueFileName = Guid.NewGuid().ToString() + extension;
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);

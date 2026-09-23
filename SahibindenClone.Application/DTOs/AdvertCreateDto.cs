@@ -22,8 +22,6 @@ namespace SahibindenClone.Application.DTOs
         [Range(1, int.MaxValue, ErrorMessage = "Geçerli bir kategori seçiniz.")]
         public int CategoryId { get; set; }
 
-        [Required]
-        [Range(1, int.MaxValue, ErrorMessage = "Geçerli bir kullanıcı gereklidir.")]
-        public int UserId { get; set; }
+        // UserId artık JWT token'dan alınıyor, DTO'da gerekli değil.
     }
 }

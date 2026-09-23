@@ -58,6 +58,25 @@ function renderAdvert(advert) {
            </div>`
         : '';
 
+    // Sahiplik Kontrolü: Yalnızca ilanın sahibi "Düzenle" ve "Sil" butonlarını görebilir
+    const loggedInUserId = localStorage.getItem('userId');
+    let actionButtonsHtml = '';
+
+    if (loggedInUserId && advert.userId && loggedInUserId === advert.userId.toString()) {
+        actionButtonsHtml = `
+            <div class="action-buttons">
+                <a href="edit-advert.html?id=${advert.id}" class="btn-edit">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Düzenle
+                </a>
+                <button class="btn-delete" onclick="confirmDelete(${advert.id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    Sil
+                </button>
+            </div>
+        `;
+    }
+
     // İçeriği oluştur
     const container = document.getElementById('detailContent');
     container.innerHTML = `
@@ -100,17 +119,8 @@ function renderAdvert(advert) {
                     İletişime Geç
                 </button>
 
-                <!-- Düzenleme & Silme Butonları -->
-                <div class="action-buttons">
-                    <a href="edit-advert.html?id=${advert.id}" class="btn-edit">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        Düzenle
-                    </a>
-                    <button class="btn-delete" onclick="confirmDelete(${advert.id})">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                        Sil
-                    </button>
-                </div>
+                <!-- Düzenleme & Silme Butonları (Sadece Sahipler İçin) -->
+                ${actionButtonsHtml}
             </div>
 
             <div class="info-card fade-up fade-up-delay-2">
@@ -168,7 +178,16 @@ function confirmDelete(id) {
     // Sil butonuna tıklayınca
     document.getElementById('confirmDeleteBtn').addEventListener('click', async () => {
         try {
-            const response = await fetch(`/api/adverts/${id}`, { method: 'DELETE' });
+            // Token'ı localStorage'dan alıyoruz
+            const token = localStorage.getItem('token');
+
+            const response = await fetch(`/api/adverts/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}` // Token eklendi
+                }
+            });
+
             if (response.ok) {
                 overlay.querySelector('.modal-box').innerHTML = `
                     <h3 style="color: #059669;">İlan Silindi!</h3>
@@ -178,7 +197,12 @@ function confirmDelete(id) {
                     window.location.href = 'index.html';
                 }, 1500);
             } else {
-                overlay.querySelector('.modal-box p').textContent = 'Silme işlemi başarısız oldu.';
+                // Hata mesajını yakalayıp 401/403 için özel uyarı göster
+                if (response.status === 401 || response.status === 403) {
+                    overlay.querySelector('.modal-box p').textContent = 'Bu ilanı silme yetkiniz yok.';
+                } else {
+                    overlay.querySelector('.modal-box p').textContent = 'Silme işlemi başarısız oldu.';
+                }
                 overlay.querySelector('.modal-box p').style.color = '#ef4444';
             }
         } catch (error) {
