@@ -43,6 +43,7 @@ builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepositor
 builder.Services.AddScoped<IAdvertRepository, AdvertRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 
 // MVC yerine sadece API Controller'ları ekliyoruz
 builder.Services.AddControllers();

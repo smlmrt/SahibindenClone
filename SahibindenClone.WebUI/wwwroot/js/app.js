@@ -8,12 +8,34 @@ let currentState = {
     pageSize: 20
 };
 
+// Kullanıcının favori ilan ID'leri (kalp ikonu için)
+let favoriteIds = new Set();
+
 // ═══════════════ BAŞLANGIÇ ═══════════════
 document.addEventListener("DOMContentLoaded", () => {
     loadCategories();
-    fetchAdverts();
+    loadFavoriteIds().then(() => fetchAdverts());
     setupEventListeners();
 });
+
+// ═══════════════ FAVORİ ID'LERİNİ YÜKLE ═══════════════
+async function loadFavoriteIds() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/favorites/ids', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            const ids = await response.json();
+            favoriteIds = new Set(ids);
+        }
+    } catch (error) {
+        console.error('Favori ID yükleme hatası:', error);
+    }
+}
+
 
 // ═══════════════ EVENT LISTENER'LAR ═══════════════
 function setupEventListeners() {
@@ -174,6 +196,20 @@ async function fetchAdverts() {
                 ? `<img src="${advert.imageUrl}" alt="${advert.title}" />` 
                 : `<span>Görsel Yok</span>`;
 
+            const isFav = favoriteIds.has(advert.id);
+            const token = localStorage.getItem('token');
+            const heartHtml = token ? `
+                <button class="favorite-btn ${isFav ? 'favorited' : ''}" 
+                        onclick="toggleFavoriteFromCard(event, ${advert.id}, this)" 
+                        title="${isFav ? 'Favorilerden çıkar' : 'Favorilere ekle'}">
+                    <svg viewBox="0 0 24 24" width="20" height="20"
+                         fill="${isFav ? 'currentColor' : 'none'}" 
+                         stroke="currentColor" stroke-width="2">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                </button>
+            ` : '';
+
             card.innerHTML = `
                 <div class="advert-image">${imageHtml}</div>
                 <div class="advert-card-body">
@@ -181,6 +217,7 @@ async function fetchAdverts() {
                     <div class="advert-price">${priceFormatted}</div>
                     <div class="advert-meta">${advert.categoryName} • ${advert.userName}</div>
                 </div>
+                ${heartHtml}
             `;
             container.appendChild(card);
         });
@@ -273,4 +310,46 @@ function goToPage(page) {
     fetchAdverts();
     // Sayfanın üstüne scroll
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════ FAVORİ TOGGLE (KART İÇİ) ═══════════════
+async function toggleFavoriteFromCard(event, advertId, buttonEl) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/favorites/${advertId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            const svg = buttonEl.querySelector('svg');
+
+            if (data.isFavorited) {
+                buttonEl.classList.add('favorited');
+                svg.setAttribute('fill', 'currentColor');
+                buttonEl.title = 'Favorilerden çıkar';
+                favoriteIds.add(advertId);
+            } else {
+                buttonEl.classList.remove('favorited');
+                svg.setAttribute('fill', 'none');
+                buttonEl.title = 'Favorilere ekle';
+                favoriteIds.delete(advertId);
+            }
+
+            // Kalp animasyonu
+            buttonEl.classList.add('favorite-pulse');
+            setTimeout(() => buttonEl.classList.remove('favorite-pulse'), 400);
+        }
+    } catch (error) {
+        console.error('Favori toggle hatası:', error);
+    }
 }

@@ -16,6 +16,7 @@ async function fetchAdvertDetail(id) {
 
         const advert = await response.json();
         renderAdvert(advert);
+        checkFavoriteStatus(advert.id);
     } catch (error) {
         showError("İlan yüklenirken bir hata oluştu.");
     }
@@ -118,6 +119,15 @@ function renderAdvert(advert) {
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
                     İletişime Geç
                 </button>
+
+                ${localStorage.getItem('token') ? `
+                <button class="favorite-detail-btn" id="favoriteDetailBtn" onclick="toggleFavoriteDetail(${advert.id})">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" id="favoriteDetailSvg">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                    </svg>
+                    <span id="favoriteDetailText">Favorilere Ekle</span>
+                </button>
+                ` : ''}
 
                 <!-- Düzenleme & Silme Butonları (Sadece Sahipler İçin) -->
                 ${actionButtonsHtml}
@@ -244,4 +254,70 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ═══════════════ FAVORİ İŞLEMLERİ ═══════════════
+async function checkFavoriteStatus(advertId) {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const response = await fetch('/api/favorites/ids', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+            const ids = await response.json();
+            if (ids.includes(advertId)) {
+                updateFavoriteButton(true);
+            }
+        }
+    } catch (error) {
+        console.error('Favori durum kontrolü hatası:', error);
+    }
+}
+
+function updateFavoriteButton(isFavorited) {
+    const btn = document.getElementById('favoriteDetailBtn');
+    const svg = document.getElementById('favoriteDetailSvg');
+    const text = document.getElementById('favoriteDetailText');
+    if (!btn) return;
+
+    if (isFavorited) {
+        btn.classList.add('favorited');
+        svg.setAttribute('fill', 'currentColor');
+        text.textContent = 'Favorilerde';
+    } else {
+        btn.classList.remove('favorited');
+        svg.setAttribute('fill', 'none');
+        text.textContent = 'Favorilere Ekle';
+    }
+}
+
+async function toggleFavoriteDetail(advertId) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/favorites/${advertId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            updateFavoriteButton(data.isFavorited);
+
+            // Pulse animasyonu
+            const btn = document.getElementById('favoriteDetailBtn');
+            if (btn) {
+                btn.classList.add('favorite-pulse');
+                setTimeout(() => btn.classList.remove('favorite-pulse'), 400);
+            }
+        }
+    } catch (error) {
+        console.error('Favori toggle hatası:', error);
+    }
 }

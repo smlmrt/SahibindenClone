@@ -15,5 +15,8 @@ namespace SahibindenClone.Domain.Entities
         // İlanın Kategorisi
         public int CategoryId { get; set; }
         public virtual Category Category { get; set; } = null!;
+
+        // İlanı favoriye ekleyen kullanıcılar
+        public virtual ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();
     }
 }

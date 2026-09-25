@@ -10,6 +10,7 @@ namespace SahibindenClone.Infrastructure.Context
         public DbSet<User> Users { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Advert> Adverts { get; set; }
+        public DbSet<Favorite> Favorites { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -21,6 +22,23 @@ namespace SahibindenClone.Infrastructure.Context
                 .WithMany(c => c.SubCategories)
                 .HasForeignKey(c => c.ParentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Aynı kullanıcı aynı ilanı birden fazla kez favoriye eklemesin
+            modelBuilder.Entity<Favorite>()
+                .HasIndex(f => new { f.UserId, f.AdvertId })
+                .IsUnique();
+
+            modelBuilder.Entity<Favorite>()
+                .HasOne(f => f.User)
+                .WithMany(u => u.Favorites)
+                .HasForeignKey(f => f.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<Favorite>()
+                .HasOne(f => f.Advert)
+                .WithMany(a => a.Favorites)
+                .HasForeignKey(f => f.AdvertId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }
