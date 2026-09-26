@@ -49,7 +49,8 @@ namespace SahibindenClone.WebUI.Controllers
                 CategoryName = a.Category?.Name ?? "Kategorisiz",
                 UserName = $"{a.User?.FirstName} {a.User?.LastName}",
                 CreatedAt = a.CreatedAt,
-                ImageUrl = a.ImageUrl
+                ImageUrl = a.Images?.OrderBy(i => i.SortOrder).FirstOrDefault(i => i.IsMain)?.ImageUrl 
+                           ?? a.Images?.OrderBy(i => i.SortOrder).FirstOrDefault()?.ImageUrl
             }).ToList();
 
             var result = new PaginatedResultDto<AdvertListDto>
@@ -82,28 +83,22 @@ namespace SahibindenClone.WebUI.Controllers
                 UserName = $"{advert.User?.FirstName} {advert.User?.LastName}",
                 UserId = advert.UserId, // Frontend yetki (Sahiplik) kontrolü için eklendi
                 CreatedAt = advert.CreatedAt,
-                ImageUrl = advert.ImageUrl
+                Images = advert.Images?.OrderBy(i => i.SortOrder).Select(i => new {
+                    i.Id,
+                    i.ImageUrl,
+                    i.IsMain,
+                    i.SortOrder
+                }).ToList()
             });
         }
 
         // İlan oluşturma — POST /api/adverts
         [Authorize]
         [HttpPost]
-        public async Task<IActionResult> CreateAdvert([FromForm] AdvertCreateDto dto, IFormFile? image)
+        public async Task<IActionResult> CreateAdvert([FromForm] AdvertCreateDto dto, List<IFormFile>? images)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new { Errors = GetValidationErrors() });
-
-            string? imageUrl = null;
-
-            if (image != null && image.Length > 0)
-            {
-                var imageValidation = ValidateImage(image);
-                if (imageValidation != null)
-                    return BadRequest(new { Errors = new[] { imageValidation } });
-
-                imageUrl = await SaveImageAsync(image);
-            }
 
             // UserId'yi token'dan al — client'a güvenme!
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -117,10 +112,32 @@ namespace SahibindenClone.WebUI.Controllers
                 Price = dto.Price,
                 CategoryId = dto.CategoryId,
                 UserId = userId,
-                ImageUrl = imageUrl,
                 CreatedAt = DateTime.UtcNow,
-                IsActive = true
+                IsActive = true,
+                Images = new List<Domain.Entities.AdvertImage>()
             };
+
+            if (images != null && images.Count > 0)
+            {
+                int sortOrder = 0;
+                foreach (var image in images)
+                {
+                    if (image.Length > 0)
+                    {
+                        var imageValidation = ValidateImage(image);
+                        if (imageValidation != null)
+                            return BadRequest(new { Errors = new[] { imageValidation } });
+
+                        var imageUrl = await SaveImageAsync(image);
+                        newAdvert.Images.Add(new Domain.Entities.AdvertImage
+                        {
+                            ImageUrl = imageUrl,
+                            IsMain = sortOrder == 0,
+                            SortOrder = sortOrder++
+                        });
+                    }
+                }
+            }
 
             await _advertRepository.AddAsync(newAdvert);
             await _advertRepository.SaveChangesAsync();
@@ -131,12 +148,12 @@ namespace SahibindenClone.WebUI.Controllers
         // İlan güncelleme — PUT /api/adverts/{id}
         [Authorize]
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateAdvert(int id, [FromForm] AdvertUpdateDto dto, IFormFile? image)
+        public async Task<IActionResult> UpdateAdvert(int id, [FromForm] AdvertUpdateDto dto, List<IFormFile>? images)
         {
             if (!ModelState.IsValid)
                 return BadRequest(new { Errors = GetValidationErrors() });
 
-            var advert = await _advertRepository.GetByIdAsync(id);
+            var advert = await _advertRepository.GetAdvertWithDetailsByIdAsync(id);
             if (advert == null || !advert.IsActive)
                 return NotFound(new { Message = "İlan bulunamadı." });
 
@@ -152,23 +169,32 @@ namespace SahibindenClone.WebUI.Controllers
             advert.CategoryId = dto.CategoryId;
             advert.UpdatedAt = DateTime.UtcNow;
 
-            // Yeni görsel yüklendiyse güncelle
-            if (image != null && image.Length > 0)
+            // Yeni görseller yüklendiyse ekle
+            if (images != null && images.Count > 0)
             {
-                var imageValidation = ValidateImage(image);
-                if (imageValidation != null)
-                    return BadRequest(new { Errors = new[] { imageValidation } });
-
-                // Eski görseli sil (varsa)
-                if (!string.IsNullOrEmpty(advert.ImageUrl))
+                // Note: GetAdvertById doesn't include images because it's a generic GetByIdAsync from repository.
+                // We should probably get it with details or just append here without checking existing count, 
+                // but since it's an update, let's just append for now.
+                // Ideally, there should be a separate endpoint for image management.
+                int sortOrder = advert.Images?.Count ?? 0;
+                foreach (var image in images)
                 {
-                    var oldImagePath = Path.Combine(_env.WebRootPath, advert.ImageUrl.TrimStart('/'));
-                    if (System.IO.File.Exists(oldImagePath))
+                    if (image.Length > 0)
                     {
-                        System.IO.File.Delete(oldImagePath);
+                        var imageValidation = ValidateImage(image);
+                        if (imageValidation != null)
+                            return BadRequest(new { Errors = new[] { imageValidation } });
+
+                        var imageUrl = await SaveImageAsync(image);
+                        if (advert.Images == null) advert.Images = new List<Domain.Entities.AdvertImage>();
+                        advert.Images.Add(new Domain.Entities.AdvertImage
+                        {
+                            ImageUrl = imageUrl,
+                            IsMain = sortOrder == 0 && advert.Images.Count == 0, // Set main if it's the first image ever
+                            SortOrder = sortOrder++
+                        });
                     }
                 }
-                advert.ImageUrl = await SaveImageAsync(image);
             }
 
             _advertRepository.Update(advert);

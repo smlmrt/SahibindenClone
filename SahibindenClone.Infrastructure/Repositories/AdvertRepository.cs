@@ -14,6 +14,7 @@ namespace SahibindenClone.Infrastructure.Repositories
             return await _context.Adverts
                 .Include(a => a.Category)
                 .Include(a => a.User)
+                .Include(a => a.Images)
                 .Where(a => a.IsActive)
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
@@ -24,12 +25,14 @@ namespace SahibindenClone.Infrastructure.Repositories
             return await _context.Adverts
                 .Include(a => a.Category)
                 .Include(a => a.User)
+                .Include(a => a.Images)
                 .FirstOrDefaultAsync(a => a.Id == id && a.IsActive);
         }
 
         public async Task<IEnumerable<Advert>> GetAdvertsByCategoryIdAsync(int categoryId)
         {
             return await _context.Adverts
+                .Include(a => a.Images)
                 .Where(a => a.CategoryId == categoryId && a.IsActive)
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
@@ -46,6 +49,7 @@ namespace SahibindenClone.Infrastructure.Repositories
             var query = _context.Adverts
                 .Include(a => a.Category)
                 .Include(a => a.User)
+                .Include(a => a.Images)
                 .Where(a => a.IsActive)
                 .AsQueryable();
 

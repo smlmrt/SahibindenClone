@@ -10,6 +10,7 @@ namespace SahibindenClone.Infrastructure.Context
         public DbSet<User> Users { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Advert> Adverts { get; set; }
+        public DbSet<AdvertImage> AdvertImages { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
 
 
@@ -38,6 +39,12 @@ namespace SahibindenClone.Infrastructure.Context
                 .HasOne(f => f.Advert)
                 .WithMany(a => a.Favorites)
                 .HasForeignKey(f => f.AdvertId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AdvertImage>()
+                .HasOne(ai => ai.Advert)
+                .WithMany(a => a.Images)
+                .HasForeignKey(ai => ai.AdvertId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }

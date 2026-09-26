@@ -14,6 +14,8 @@ namespace SahibindenClone.Infrastructure.Repositories
             return await _context.Users
                 .Include(u => u.Adverts.Where(a => a.IsActive))
                 .ThenInclude(a => a.Category)
+                .Include(u => u.Adverts)
+                .ThenInclude(a => a.Images)
                 .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
         }
 

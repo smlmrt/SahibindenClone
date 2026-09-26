@@ -73,7 +73,7 @@ namespace SahibindenClone.WebUI.Controllers
                 Price = a.Price,
                 CategoryName = a.Category?.Name ?? "Kategorisiz",
                 UserName = $"{a.User?.FirstName} {a.User?.LastName}",
-                ImageUrl = a.ImageUrl,
+                ImageUrl = a.Images?.OrderBy(i => i.SortOrder).FirstOrDefault(i => i.IsMain)?.ImageUrl ?? a.Images?.OrderBy(i => i.SortOrder).FirstOrDefault()?.ImageUrl,
                 CreatedAt = a.CreatedAt
             }).ToList();
 

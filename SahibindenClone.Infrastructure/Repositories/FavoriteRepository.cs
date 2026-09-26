@@ -38,6 +38,8 @@ namespace SahibindenClone.Infrastructure.Repositories
                     .ThenInclude(a => a.Category)
                 .Include(f => f.Advert)
                     .ThenInclude(a => a.User)
+                .Include(f => f.Advert)
+                    .ThenInclude(a => a.Images)
                 .OrderByDescending(f => f.CreatedAt)
                 .Select(f => f.Advert)
                 .ToListAsync();
