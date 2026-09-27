@@ -13,6 +13,7 @@ namespace SahibindenClone.Infrastructure.Repositories
         {
             return await _context.Adverts
                 .Include(a => a.Category)
+                .Include(a => a.City)
                 .Include(a => a.User)
                 .Include(a => a.Images)
                 .Where(a => a.IsActive)
@@ -24,6 +25,7 @@ namespace SahibindenClone.Infrastructure.Repositories
         {
             return await _context.Adverts
                 .Include(a => a.Category)
+                .Include(a => a.City)
                 .Include(a => a.User)
                 .Include(a => a.Images)
                 .FirstOrDefaultAsync(a => a.Id == id && a.IsActive);
@@ -41,6 +43,7 @@ namespace SahibindenClone.Infrastructure.Repositories
         public async Task<(IEnumerable<Advert> Items, int TotalCount)> GetFilteredAdvertsAsync(
             string? search,
             int? categoryId,
+            int? cityId,
             decimal? minPrice,
             decimal? maxPrice,
             int page,
@@ -48,12 +51,13 @@ namespace SahibindenClone.Infrastructure.Repositories
         {
             var query = _context.Adverts
                 .Include(a => a.Category)
+                .Include(a => a.City)
                 .Include(a => a.User)
                 .Include(a => a.Images)
                 .Where(a => a.IsActive)
                 .AsQueryable();
 
-            // Arama filtresi (başlık veya açıklamada)
+            // Arama filtresi
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var searchLower = search.ToLower();
@@ -63,32 +67,17 @@ namespace SahibindenClone.Infrastructure.Repositories
             }
 
             // Kategori filtresi
-            if (categoryId.HasValue)
-            {
-                query = query.Where(a => a.CategoryId == categoryId.Value);
-            }
+            if (categoryId.HasValue) query = query.Where(a => a.CategoryId == categoryId.Value);
 
-            // Minimum fiyat filtresi
-            if (minPrice.HasValue)
-            {
-                query = query.Where(a => a.Price >= minPrice.Value);
-            }
+            // ŞEHİR FİLTRESİ (YENİ EKLENDİ)
+            if (cityId.HasValue) query = query.Where(a => a.CityId == cityId.Value);
 
-            // Maksimum fiyat filtresi
-            if (maxPrice.HasValue)
-            {
-                query = query.Where(a => a.Price <= maxPrice.Value);
-            }
+            // Minimum ve Maksimum fiyat filtreleri
+            if (minPrice.HasValue) query = query.Where(a => a.Price >= minPrice.Value);
+            if (maxPrice.HasValue) query = query.Where(a => a.Price <= maxPrice.Value);
 
-            // Toplam sayı
             var totalCount = await query.CountAsync();
-
-            // Sayfalama + sıralama
-            var items = await query
-                .OrderByDescending(a => a.CreatedAt)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+            var items = await query.OrderByDescending(a => a.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
             return (items, totalCount);
         }

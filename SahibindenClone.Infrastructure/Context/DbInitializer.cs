@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using SahibindenClone.Domain.Entities;
 
 namespace SahibindenClone.Infrastructure.Context
@@ -6,30 +7,47 @@ namespace SahibindenClone.Infrastructure.Context
     {
         public static void Initialize(ApplicationDbContext context)
         {
-            context.Database.EnsureCreated();
+            context.Database.Migrate();
 
-            if (context.Categories.Any())
+            if (!context.Users.Any())
             {
-                return;
+                var users = new User[]
+                {
+                    new User { FirstName = "Ahmet", LastName = "Yılmaz", Email = "sahibindenclone.test", PasswordHash="hash_placeholder", IsActive = true, CreatedAt = DateTime.UtcNow}
+                };
+
+                context.Users.AddRange(users);
+                context.SaveChanges();
             }
 
-            var users = new User[]
+            if (!context.Categories.Any())
             {
-                new User { FirstName = "Ahmet", LastName = "Yılmaz", Email = "sahibindenclone.test", PasswordHash="hash_placeholder", IsActive = true, CreatedAt = DateTime.UtcNow}
-            };
+                var categories = new Category[]
+                {
+                    new Category { Name = "Emlak", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new Category { Name = "Vasıta", IsActive = true, CreatedAt = DateTime.UtcNow },
+                    new Category { Name = "İkinci El ve Sıfır Alışveriş", IsActive = true, CreatedAt = DateTime.UtcNow }
+                };
 
-            context.Users.AddRange(users);
-            context.SaveChanges();
+                context.Categories.AddRange(categories);
+                context.SaveChanges();
+            }
 
-            var categories = new Category[]
+            var defaultCities = new[] { "İstanbul", "Ankara", "İzmir", "Bursa", "Antalya" };
+            bool anyNewCity = false;
+            foreach (var cityName in defaultCities)
             {
-                new Category { Name = "Emlak", IsActive = true, CreatedAt = DateTime.UtcNow },
-                new Category { Name = "Vasıta", IsActive = true, CreatedAt = DateTime.UtcNow },
-                new Category { Name = "İkinci El ve Sıfır Alışveriş", IsActive = true, CreatedAt = DateTime.UtcNow }
-            };
+                if (!context.Cities.Any(c => c.Name == cityName))
+                {
+                    context.Cities.Add(new City { Name = cityName, IsActive = true, CreatedAt = DateTime.UtcNow });
+                    anyNewCity = true;
+                }
+            }
 
-            context.Categories.AddRange(categories);
-            context.SaveChanges();
+            if (anyNewCity)
+            {
+                context.SaveChanges();
+            }
         }
     }
 }

@@ -29,6 +29,7 @@ namespace SahibindenClone.WebUI.Controllers
         public async Task<IActionResult> GetAdverts(
             [FromQuery] string? search,
             [FromQuery] int? categoryId,
+            [FromQuery] int? cityId,
             [FromQuery] decimal? minPrice,
             [FromQuery] decimal? maxPrice,
             [FromQuery] int page = 1,
@@ -39,7 +40,7 @@ namespace SahibindenClone.WebUI.Controllers
             if (pageSize > 100) pageSize = 100;
 
             var (adverts, totalCount) = await _advertRepository.GetFilteredAdvertsAsync(
-                search, categoryId, minPrice, maxPrice, page, pageSize);
+                search, categoryId, cityId, minPrice, maxPrice, page, pageSize);
 
             var dtoList = adverts.Select(a => new AdvertListDto
             {
@@ -47,6 +48,7 @@ namespace SahibindenClone.WebUI.Controllers
                 Title = a.Title,
                 Price = a.Price,
                 CategoryName = a.Category?.Name ?? "Kategorisiz",
+                CityName = a.City?.Name ?? "Belirtilmemiş",
                 UserName = $"{a.User?.FirstName} {a.User?.LastName}",
                 CreatedAt = a.CreatedAt,
                 ImageUrl = a.Images?.OrderBy(i => i.SortOrder).FirstOrDefault(i => i.IsMain)?.ImageUrl 
@@ -111,6 +113,7 @@ namespace SahibindenClone.WebUI.Controllers
                 Description = dto.Description,
                 Price = dto.Price,
                 CategoryId = dto.CategoryId,
+                CityId = dto.CityId,
                 UserId = userId,
                 CreatedAt = DateTime.UtcNow,
                 IsActive = true,
@@ -167,6 +170,7 @@ namespace SahibindenClone.WebUI.Controllers
             advert.Description = dto.Description;
             advert.Price = dto.Price;
             advert.CategoryId = dto.CategoryId;
+            advert.CityId = dto.CityId;
             advert.UpdatedAt = DateTime.UtcNow;
 
             // Yeni görseller yüklendiyse ekle

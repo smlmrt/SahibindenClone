@@ -14,6 +14,10 @@ namespace SahibindenClone.Domain.Entities
         public int CategoryId { get; set; }
         public virtual Category Category { get; set; } = null!;
 
+        // İlna Konumu 
+        public int CityId { get; set; }
+        public virtual City City { get; set; } = null!;
+
         // İlan Görselleri
         public virtual ICollection<AdvertImage> Images { get; set; } = new List<AdvertImage>();
 

@@ -9,6 +9,7 @@ namespace SahibindenClone.Infrastructure.Context
 
         public DbSet<User> Users { get; set; }
         public DbSet<Category> Categories { get; set; }
+        public DbSet<City> Cities { get; set; }
         public DbSet<Advert> Adverts { get; set; }
         public DbSet<AdvertImage> AdvertImages { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
@@ -22,6 +23,12 @@ namespace SahibindenClone.Infrastructure.Context
                 .HasOne(c => c.Parent)
                 .WithMany(c => c.SubCategories)
                 .HasForeignKey(c => c.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            modelBuilder.Entity<Advert>()
+                .HasOne(a => a.City)
+                .WithMany(c => c.Adverts)
+                .HasForeignKey(a => a.CityId)
                 .OnDelete(DeleteBehavior.Restrict);
 
             // Aynı kullanıcı aynı ilanı birden fazla kez favoriye eklemesin

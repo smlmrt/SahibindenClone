@@ -14,6 +14,7 @@ namespace SahibindenClone.Application.Interfaces
         Task<(IEnumerable<Advert> Items, int TotalCount)> GetFilteredAdvertsAsync(
             string? search,
             int? categoryId,
+            int? cityId,
             decimal? minPrice,
             decimal? maxPrice,
             int page,

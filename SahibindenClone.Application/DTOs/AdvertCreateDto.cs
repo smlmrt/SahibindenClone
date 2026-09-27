@@ -22,6 +22,10 @@ namespace SahibindenClone.Application.DTOs
         [Range(1, int.MaxValue, ErrorMessage = "Geçerli bir kategori seçiniz.")]
         public int CategoryId { get; set; }
 
+        [Required(ErrorMessage = "Şehir seçimi zorunludur.")]
+        [Range(1, int.MaxValue, ErrorMessage = "Geçerli bir şehir seçiniz.")]
+        public int CityId { get; set; }
+
         // UserId artık JWT token'dan alınıyor, DTO'da gerekli değil.
     }
 }

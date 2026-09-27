@@ -1,8 +1,28 @@
 // ═══════════════ BAŞLANGIÇ ═══════════════
 document.addEventListener("DOMContentLoaded", () => {
     loadCategories();
+    loadCities(); // ŞEHİRLER YÜKLENİYOR
     setupImagePreview();
 });
+
+// ═══════════════ ŞEHİRLERİ API'DEN YÜKLE ═══════════════
+async function loadCities() {
+    try {
+        const response = await fetch('/api/cities');
+        if (!response.ok) throw new Error('Şehirler yüklenemedi.');
+
+        const cities = await response.json();
+        const select = document.getElementById('cityId');
+
+        cities.forEach(city => {
+            select.add(new Option(city.name, city.id));
+        });
+    } catch (error) {
+        console.error('Şehir yükleme hatası:', error);
+        const select = document.getElementById('cityId');
+        if (select) select.innerHTML = '<option value="">Şehirler yüklenemedi</option>';
+    }
+}
 
 // ═══════════════ KATEGORİLERİ API'DEN YÜKLE ═══════════════
 async function loadCategories() {
@@ -33,7 +53,7 @@ async function loadCategories() {
     } catch (error) {
         console.error('Kategori yükleme hatası:', error);
         const select = document.getElementById('categoryId');
-        select.innerHTML = '<option value="">Kategoriler yüklenemedi</option>';
+        if (select) select.innerHTML = '<option value="">Kategoriler yüklenemedi</option>';
     }
 }
 
@@ -42,6 +62,8 @@ function setupImagePreview() {
     const fileInput = document.getElementById('image');
     const preview = document.getElementById('filePreview');
     const wrapper = document.getElementById('fileWrapper');
+
+    if (!fileInput) return;
 
     fileInput.addEventListener('change', () => {
         const file = fileInput.files[0];
@@ -79,72 +101,82 @@ function validateImageFile(file) {
 }
 
 // ═══════════════ FORM GÖNDER ═══════════════
-document.getElementById('postAdvertForm').addEventListener('submit', async function (e) {
-    e.preventDefault();
+const form = document.getElementById('postAdvertForm');
+if (form) {
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
 
-    // 1. GİRİŞ KONTROLÜ
-    const token = localStorage.getItem('token');
+        // 1. GİRİŞ KONTROLÜ VE KULLANICI BİLGİLERİNİ ALMA
+        const userId = localStorage.getItem('userId');
+        const token = localStorage.getItem('token');
 
-    if (!token) {
-        showMessage("İlan verebilmek için giriş yapmalısınız. Yönlendiriliyorsunuz...", "error");
-        setTimeout(() => { window.location.href = "login.html"; }, 2000);
-        return;
-    }
-
-    // Client-side validasyonlar
-    const title = document.getElementById('title').value.trim();
-    const description = document.getElementById('description').value.trim();
-    const price = document.getElementById('price').value;
-    const categoryId = document.getElementById('categoryId').value;
-
-    if (title.length < 3) { showMessage('Başlık en az 3 karakter olmalıdır.', 'error'); return; }
-    if (title.length > 150) { showMessage('Başlık en fazla 150 karakter olabilir.', 'error'); return; }
-    if (description.length < 10) { showMessage('Açıklama en az 10 karakter olmalıdır.', 'error'); return; }
-    if (!price || parseFloat(price) < 0) { showMessage('Geçerli bir fiyat giriniz.', 'error'); return; }
-    if (!categoryId) { showMessage('Lütfen bir kategori seçin.', 'error'); return; }
-
-    // Görsel validasyonu
-    const imageFile = document.getElementById('image').files[0];
-    const imageError = validateImageFile(imageFile);
-    if (imageError) { showMessage(imageError, 'error'); return; }
-
-    const formData = new FormData();
-    formData.append("Title", title);
-    formData.append("Description", description);
-    formData.append("Price", price);
-    formData.append("CategoryId", categoryId);
-
-    if (imageFile) {
-        formData.append("image", imageFile);
-    }
-
-    try {
-        const response = await fetch('/api/adverts', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'Authorization': `Bearer ${token}` // Token eklendi
-            }
-        });
-
-        if (response.ok) {
-            showMessage("İlan başarıyla yayına alındı! Ana sayfaya yönlendiriliyorsunuz...", "success");
-            setTimeout(() => {
-                window.location.href = "index.html";
-            }, 2000);
-        } else {
-            const errorData = await response.json().catch(() => null);
-            const errorMsg = errorData?.errors?.join('\n') || "Hata: İlan eklenemedi.";
-            showMessage(errorMsg, "error");
+        if (!userId || !token) {
+            showMessage("İlan verebilmek için giriş yapmalısınız. Yönlendiriliyorsunuz...", "error");
+            setTimeout(() => { window.location.href = "login.html"; }, 2000);
+            return;
         }
-    } catch (error) {
-        console.error("Hata:", error);
-        showMessage("Sunucuya ulaşılamadı.", "error");
-    }
-});
+
+        // Client-side validasyonlar
+        const title = document.getElementById('title').value.trim();
+        const description = document.getElementById('description').value.trim();
+        const price = document.getElementById('price').value;
+        const categoryId = document.getElementById('categoryId').value;
+        const cityId = document.getElementById('cityId').value; // ŞEHİR VALIDASYONU
+
+        if (title.length < 3) { showMessage('Başlık en az 3 karakter olmalıdır.', 'error'); return; }
+        if (title.length > 150) { showMessage('Başlık en fazla 150 karakter olabilir.', 'error'); return; }
+        if (description.length < 10) { showMessage('Açıklama en az 10 karakter olmalıdır.', 'error'); return; }
+        if (!price || parseFloat(price) < 0) { showMessage('Geçerli bir fiyat giriniz.', 'error'); return; }
+        if (!categoryId) { showMessage('Lütfen bir kategori seçin.', 'error'); return; }
+        if (!cityId) { showMessage('Lütfen bir şehir seçin.', 'error'); return; } // ŞEHİR UYARISI
+
+        // Görsel validasyonu
+        const imageFile = document.getElementById('image').files[0];
+        const imageError = validateImageFile(imageFile);
+        if (imageError) { showMessage(imageError, 'error'); return; }
+
+        const formData = new FormData();
+        formData.append("Title", title);
+        formData.append("Description", description);
+        formData.append("Price", price);
+        formData.append("CategoryId", categoryId);
+        formData.append("CityId", cityId); // ŞEHİR VERİSİ EKLENDİ
+        formData.append("UserId", userId);
+
+        if (imageFile) {
+            formData.append("image", imageFile);
+        }
+
+        try {
+            const response = await fetch('/api/adverts', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                showMessage("İlan başarıyla yayına alındı! Ana sayfaya yönlendiriliyorsunuz...", "success");
+                setTimeout(() => {
+                    window.location.href = "index.html";
+                }, 2000);
+            } else {
+                const errorData = await response.json().catch(() => null);
+                const errorMsg = errorData?.errors?.join('\n') || "Hata: İlan eklenemedi.";
+                showMessage(errorMsg, "error");
+            }
+        } catch (error) {
+            console.error("Hata:", error);
+            showMessage("Sunucuya ulaşılamadı.", "error");
+        }
+    });
+}
 
 function showMessage(text, type) {
     const el = document.getElementById('resultMessage');
-    el.textContent = text;
-    el.className = type; // 'success' veya 'error'
+    if (el) {
+        el.textContent = text;
+        el.className = type;
+    }
 }
