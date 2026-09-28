@@ -48,6 +48,19 @@ namespace SahibindenClone.Infrastructure.Context
             {
                 context.SaveChanges();
             }
+
+            // --- ESKİ İLANLARI KURTARMA KODU ---
+            // Süresi 2000 yılından eski görünen (varsayılan değer alan) ilanları bul ve aktife çek
+            var legacyAdverts = context.Adverts.Where(a => a.ExpirationDate.Year < 2000).ToList();
+            if (legacyAdverts.Any())
+            {
+                foreach (var advert in legacyAdverts)
+                {
+                    advert.Status = Domain.Enums.AdvertStatus.Active;
+                    advert.ExpirationDate = DateTime.UtcNow.AddDays(30);
+                }
+                context.SaveChanges();
+            }
         }
     }
 }

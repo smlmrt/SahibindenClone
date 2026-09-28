@@ -54,7 +54,7 @@ namespace SahibindenClone.Infrastructure.Repositories
                 .Include(a => a.City)
                 .Include(a => a.User)
                 .Include(a => a.Images)
-                .Where(a => a.IsActive)
+                .Where(a => a.IsActive && a.Status == Domain.Enums.AdvertStatus.Active) 
                 .AsQueryable();
 
             // Arama filtresi

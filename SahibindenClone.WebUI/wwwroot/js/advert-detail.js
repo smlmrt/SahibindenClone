@@ -43,13 +43,41 @@ function renderAdvert(advert) {
         <span class="current">${truncate(advert.title, 50)}</span>
     `;
 
+    // DURUM ROZETİ EKLENDİ
+    let statusBadgeHtml = '';
+    if (advert.status === 2) {
+        statusBadgeHtml = `<div class="status-badge status-sold" style="position:absolute; top:16px; left:16px; font-size:13px; padding:8px 16px;">SATILDI</div>`;
+    } else if (advert.status === 3) {
+        statusBadgeHtml = `<div class="status-badge status-expired" style="position:absolute; top:16px; left:16px; font-size:13px; padding:8px 16px;">SÜRESİ DOLDU</div>`;
+    }
+
     // Görsel
-    const imageHtml = advert.imageUrl
-        ? `<img src="${advert.imageUrl}" alt="${advert.title}">`
-        : `<div class="no-image-placeholder">
+    let imageHtml = '';
+    if (advert.images && advert.images.length > 0) {
+        let sliderImages = advert.images.map((img, index) => 
+            `<img src="${img.imageUrl}" alt="${advert.title}" class="slider-image slide-${index}" style="display: ${index === 0 ? 'block' : 'none'}; width: 100%; max-height: 480px; object-fit: contain;">`
+        ).join('');
+        
+        let sliderControls = advert.images.length > 1 ? `
+            <button class="slider-btn prev" onclick="changeSlide(-1)" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; z-index: 10; font-size: 18px;">&#10094;</button>
+            <button class="slider-btn next" onclick="changeSlide(1)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; z-index: 10; font-size: 18px;">&#10095;</button>
+            <div class="slider-dots" style="position: absolute; bottom: 10px; width: 100%; text-align: center; z-index: 10;">
+                ${advert.images.map((_, i) => `<span class="dot dot-${i}" onclick="currentSlide(${i})" style="cursor: pointer; height: 10px; width: 10px; margin: 0 4px; background-color: ${i === 0 ? '#fff' : 'rgba(255,255,255,0.5)'}; border-radius: 50%; display: inline-block;"></span>`).join('')}
+            </div>
+        ` : '';
+
+        imageHtml = `
+            <div class="slider-container" style="position: relative; width: 100%; background: #000; display: flex; align-items: center; justify-content: center; min-height: 300px;">
+                ${sliderImages}
+                ${sliderControls}
+            </div>
+        `;
+    } else {
+        imageHtml = `<div class="no-image-placeholder">
                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
                <span>Görsel eklenmemiş</span>
            </div>`;
+    }
 
     // Description
     const descriptionHtml = advert.description
@@ -59,13 +87,26 @@ function renderAdvert(advert) {
            </div>`
         : '';
 
-    // Sahiplik Kontrolü: Yalnızca ilanın sahibi "Düzenle" ve "Sil" butonlarını görebilir
+    // Sahiplik Kontrolü: Yalnızca ilanın sahibi "Düzenle", "Sil" ve "Satıldı" butonlarını görebilir
     const loggedInUserId = localStorage.getItem('userId');
     let actionButtonsHtml = '';
 
     if (loggedInUserId && advert.userId && loggedInUserId === advert.userId.toString()) {
+        let markAsSoldBtn = '';
+
+        // Sadece "Aktif" (1) statüsündeki ilanlar "Satıldı" olarak işaretlenebilir
+        if (advert.status === 1) {
+            markAsSoldBtn = `
+                <button class="btn-sold" onclick="markAsSold(${advert.id})">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+                    Satıldı İşaretle
+                </button>
+            `;
+        }
+
         actionButtonsHtml = `
-            <div class="action-buttons">
+            <div class="action-buttons" style="flex-wrap: wrap;">
+                ${markAsSoldBtn}
                 <a href="edit-advert.html?id=${advert.id}" class="btn-edit">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Düzenle
@@ -84,6 +125,7 @@ function renderAdvert(advert) {
         <!-- SOL KOLON -->
         <div class="detail-left">
             <div class="image-showcase fade-up">
+                ${statusBadgeHtml}
                 ${imageHtml}
             </div>
 
@@ -91,6 +133,10 @@ function renderAdvert(advert) {
                 <h1>${escapeHtml(advert.title)}</h1>
                 <div class="price-badge">${priceFormatted}</div>
                 <div class="meta-row">
+                    <span class="meta-chip">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+                        ${advert.cityName || 'Belirtilmemiş'}
+                    </span>
                     <span class="meta-chip">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                         ${advert.categoryName}
@@ -161,6 +207,32 @@ function renderAdvert(advert) {
             </a>
         </div>
     `;
+}
+
+// ═══════════════ SATILDI İŞARETLEME ═══════════════
+async function markAsSold(id) {
+    if (!confirm("Bu ilanı 'Satıldı' olarak işaretlemek istediğinize emin misiniz? Bu işlem geri alınamaz.")) return;
+
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/adverts/${id}/mark-sold`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            alert("İlan başarıyla 'Satıldı' olarak işaretlendi!");
+            window.location.reload(); // Değişikliği anında görmek için sayfayı yenile
+        } else {
+            const errorData = await response.json().catch(() => null);
+            alert(errorData?.message || "Bir hata oluştu.");
+        }
+    } catch (error) {
+        console.error("Hata:", error);
+        alert("Sunucuya ulaşılamadı.");
+    }
 }
 
 // ═══════════════ İLAN SİLME ═══════════════
@@ -319,5 +391,38 @@ async function toggleFavoriteDetail(advertId) {
         }
     } catch (error) {
         console.error('Favori toggle hatası:', error);
+    }
+}
+
+// ═══════════════ SLIDER İŞLEMLERİ ═══════════════
+let slideIndex = 0;
+
+window.changeSlide = function(n) {
+    showSlides(slideIndex += n);
+}
+
+window.currentSlide = function(n) {
+    showSlides(slideIndex = n);
+}
+
+function showSlides(n) {
+    let slides = document.getElementsByClassName("slider-image");
+    let dots = document.getElementsByClassName("dot");
+    
+    if (!slides || slides.length === 0) return;
+    
+    if (n >= slides.length) { slideIndex = 0 }
+    if (n < 0) { slideIndex = slides.length - 1 }
+    
+    for (let i = 0; i < slides.length; i++) {
+        slides[i].style.display = "none";
+    }
+    for (let i = 0; i < dots.length; i++) {
+        dots[i].style.backgroundColor = "rgba(255,255,255,0.5)";
+    }
+    
+    slides[slideIndex].style.display = "block";
+    if (dots.length > 0) {
+        dots[slideIndex].style.backgroundColor = "#fff";
     }
 }

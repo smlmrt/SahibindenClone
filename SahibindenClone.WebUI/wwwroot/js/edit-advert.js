@@ -15,26 +15,29 @@ document.addEventListener("DOMContentLoaded", () => {
 // ═══════════════ İLAN VERİLERİNİ YÜKLE ═══════════════
 async function loadAdvertForEdit(id) {
     try {
-        // İlan ve kategorileri paralel yükle
-        const [advertResponse, categoriesResponse] = await Promise.all([
+        // İlan, kategoriler ve şehirleri paralel yükle
+        const [advertResponse, categoriesResponse, citiesResponse] = await Promise.all([
             fetch(`/api/adverts/${id}`),
-            fetch('/api/categories')
+            fetch('/api/categories'),
+            fetch('/api/cities')
         ]);
 
         if (!advertResponse.ok) throw new Error('İlan bulunamadı.');
         if (!categoriesResponse.ok) throw new Error('Kategoriler yüklenemedi.');
+        if (!citiesResponse.ok) throw new Error('Şehirler yüklenemedi.');
 
         currentAdvert = await advertResponse.json();
         const categories = await categoriesResponse.json();
+        const cities = await citiesResponse.json();
 
-        renderEditForm(currentAdvert, categories);
+        renderEditForm(currentAdvert, categories, cities);
     } catch (error) {
         showError("İlan yüklenirken bir hata oluştu: " + error.message);
     }
 }
 
 // ═══════════════ FORMU RENDER ET ═══════════════
-function renderEditForm(advert, categories) {
+function renderEditForm(advert, categories, cities) {
     const container = document.getElementById('formContainer');
 
     // Kategori option'larını oluştur
@@ -50,13 +53,24 @@ function renderEditForm(advert, categories) {
         }
     });
 
-    // Mevcut görsel
-    const currentImageHtml = advert.imageUrl
-        ? `<div class="current-image">
-               <img src="${advert.imageUrl}" alt="Mevcut görsel" />
-               <p>Mevcut görsel — Yeni bir görsel seçerseniz değiştirilir</p>
-           </div>`
-        : '';
+    // Şehir option'larını oluştur
+    let cityOptions = '<option value="">Şehir Seçin</option>';
+    if (cities) {
+        cities.forEach(city => {
+            const selected = city.id === advert.cityId ? 'selected' : '';
+            cityOptions += `<option value="${city.id}" ${selected}>${city.name}</option>`;
+        });
+    }
+
+    // Mevcut görseller
+    let currentImageHtml = '';
+    if (advert.images && advert.images.length > 0) {
+        currentImageHtml += '<div class="current-image"><div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;">';
+        advert.images.forEach(img => {
+            currentImageHtml += `<img src="${img.imageUrl}" alt="Mevcut görsel" style="max-width: 100px; max-height: 100px; object-fit: cover; border-radius: 4px;" />`;
+        });
+        currentImageHtml += '</div><p>Mevcut görseller — Yeni görsel(ler) eklerseniz üzerine eklenir/değiştirilir.</p></div>';
+    }
 
     container.innerHTML = `
         <h2>İlan Düzenle <span class="badge">#${advert.id}</span></h2>
@@ -80,8 +94,14 @@ function renderEditForm(advert, categories) {
                 </select>
             </div>
             <div class="form-group">
+                <label>Şehir</label>
+                <select id="cityId" class="form-control" required>
+                    ${cityOptions}
+                </select>
+            </div>
+            <div class="form-group">
                 <label>Yeni Görsel (opsiyonel)</label>
-                <input type="file" id="image" class="form-control" accept=".jpg,.jpeg,.png,.webp">
+                <input type="file" id="image" class="form-control" accept=".jpg,.jpeg,.png,.webp" multiple>
                 ${currentImageHtml}
             </div>
             <div class="btn-row">
@@ -125,26 +145,31 @@ async function submitEdit(id) {
     const description = document.getElementById('description').value.trim();
     const price = document.getElementById('price').value;
     const categoryId = document.getElementById('categoryId').value;
+    const cityId = document.getElementById('cityId').value;
 
     if (title.length < 3) { showMessage('Başlık en az 3 karakter olmalıdır.', 'error'); return; }
     if (title.length > 150) { showMessage('Başlık en fazla 150 karakter olabilir.', 'error'); return; }
     if (description.length < 10) { showMessage('Açıklama en az 10 karakter olmalıdır.', 'error'); return; }
     if (!price || parseFloat(price) < 0) { showMessage('Geçerli bir fiyat giriniz.', 'error'); return; }
     if (!categoryId) { showMessage('Lütfen bir kategori seçin.', 'error'); return; }
+    if (!cityId) { showMessage('Lütfen bir şehir seçin.', 'error'); return; }
 
     // Görsel validasyonu
-    const imageFile = document.getElementById('image').files[0];
-    const imageError = validateImageFile(imageFile);
-    if (imageError) { showMessage(imageError, 'error'); return; }
+    const imageFiles = document.getElementById('image').files;
+    for (let i = 0; i < imageFiles.length; i++) {
+        const imageError = validateImageFile(imageFiles[i]);
+        if (imageError) { showMessage(imageError, 'error'); return; }
+    }
 
     const formData = new FormData();
     formData.append("Title", title);
     formData.append("Description", description);
     formData.append("Price", price);
     formData.append("CategoryId", categoryId);
+    formData.append("CityId", cityId);
 
-    if (imageFile) {
-        formData.append("image", imageFile);
+    for (let i = 0; i < imageFiles.length; i++) {
+        formData.append("images", imageFiles[i]);
     }
 
     // Token'ı localStorage'dan alıyoruz
@@ -170,7 +195,16 @@ async function submitEdit(id) {
             if (response.status === 401 || response.status === 403) {
                 showMessage("Bu ilanı düzenleme yetkiniz yok.", "error");
             } else {
-                const errorMsg = errorData?.errors?.join('\n') || errorData?.message || "Hata: İlan güncellenemedi.";
+                let errorMsg = "Hata: İlan güncellenemedi.";
+                if (errorData?.errors) {
+                    if (Array.isArray(errorData.errors)) {
+                        errorMsg = errorData.errors.join('\n');
+                    } else if (typeof errorData.errors === 'object') {
+                        errorMsg = Object.values(errorData.errors).flat().join('\n');
+                    }
+                } else if (errorData?.message) {
+                    errorMsg = errorData.message;
+                }
                 showMessage(errorMsg, "error");
             }
         }

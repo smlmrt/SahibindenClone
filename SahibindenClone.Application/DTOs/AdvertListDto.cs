@@ -7,6 +7,8 @@ namespace SahibindenClone.Application.DTOs
         public decimal Price { get; set; }
         public string CategoryName { get; set; } = string.Empty;
         public string CityName { get; set; } = string.Empty;
+        public int Status { get; set; } 
+        public string StatusName { get; set; } = string.Empty; 
         public string UserName { get; set; } = string.Empty;
         public string? ImageUrl { get; set; }
         public DateTime CreatedAt { get; set; }

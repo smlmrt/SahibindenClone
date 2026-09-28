@@ -66,17 +66,19 @@ function setupImagePreview() {
     if (!fileInput) return;
 
     fileInput.addEventListener('change', () => {
-        const file = fileInput.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                preview.innerHTML = `<img src="${e.target.result}" alt="Önizleme" />`;
-                wrapper.querySelector('.file-text').innerHTML = `<strong>${file.name}</strong><br>Değiştirmek için tıklayın`;
-            };
-            reader.readAsDataURL(file);
+        const files = fileInput.files;
+        if (files && files.length > 0) {
+            let html = '<div style="display: flex; gap: 8px; flex-wrap: wrap;">';
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                html += `<img src="${URL.createObjectURL(file)}" alt="Önizleme" style="max-width: 100px; max-height: 100px; border-radius: 4px; object-fit: cover;" />`;
+            }
+            html += '</div>';
+            preview.innerHTML = html;
+            wrapper.querySelector('.file-text').innerHTML = `<strong>${files.length} görsel seçildi</strong><br>Değiştirmek için tıklayın`;
         } else {
             preview.innerHTML = '';
-            wrapper.querySelector('.file-text').innerHTML = '<strong>Dosya seçmek için tıklayın</strong><br>veya sürükleyip bırakın (JPG, PNG, max 5MB)';
+            wrapper.querySelector('.file-text').innerHTML = '<strong>Dosya seçmek için tıklayın</strong><br>veya sürükleyip bırakın (JPG, PNG, max 5MB, Çoklu seçim yapılabilir)';
         }
     });
 }
@@ -131,9 +133,11 @@ if (form) {
         if (!cityId) { showMessage('Lütfen bir şehir seçin.', 'error'); return; } // ŞEHİR UYARISI
 
         // Görsel validasyonu
-        const imageFile = document.getElementById('image').files[0];
-        const imageError = validateImageFile(imageFile);
-        if (imageError) { showMessage(imageError, 'error'); return; }
+        const imageFiles = document.getElementById('image').files;
+        for (let i = 0; i < imageFiles.length; i++) {
+            const imageError = validateImageFile(imageFiles[i]);
+            if (imageError) { showMessage(imageError, 'error'); return; }
+        }
 
         const formData = new FormData();
         formData.append("Title", title);
@@ -143,8 +147,8 @@ if (form) {
         formData.append("CityId", cityId); // ŞEHİR VERİSİ EKLENDİ
         formData.append("UserId", userId);
 
-        if (imageFile) {
-            formData.append("image", imageFile);
+        for (let i = 0; i < imageFiles.length; i++) {
+            formData.append("images", imageFiles[i]);
         }
 
         try {
@@ -163,7 +167,16 @@ if (form) {
                 }, 2000);
             } else {
                 const errorData = await response.json().catch(() => null);
-                const errorMsg = errorData?.errors?.join('\n') || "Hata: İlan eklenemedi.";
+                let errorMsg = "Hata: İlan eklenemedi.";
+                if (errorData?.errors) {
+                    if (Array.isArray(errorData.errors)) {
+                        errorMsg = errorData.errors.join('\n');
+                    } else if (typeof errorData.errors === 'object') {
+                        errorMsg = Object.values(errorData.errors).flat().join('\n');
+                    }
+                } else if (errorData?.message) {
+                    errorMsg = errorData.message;
+                }
                 showMessage(errorMsg, "error");
             }
         } catch (error) {

@@ -4,6 +4,7 @@ using Microsoft.IdentityModel.Tokens;
 using SahibindenClone.Application.Interfaces;
 using SahibindenClone.Infrastructure.Context;
 using SahibindenClone.Infrastructure.Repositories;
+using SahibindenClone.Infrastructure.Services; // Arka plan servisi için
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,9 +46,13 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 
-// MVC yerine sadece API Controller'ları ekliyoruz
+// ARKA PLAN SERVİSİ: İlan süresi kontrolü (builder.Build()'den ÖNCE olmalıdır)
+builder.Services.AddHostedService<AdvertExpirationWorker>();
+
+// API Controller'ları
 builder.Services.AddControllers();
 
+// DİKKAT: Bu satırdan sonra builder.Services değiştirilemez!
 var app = builder.Build();
 
 // --- SEED (Başlangıç Verisi) İŞLEMİ BAŞLANGICI ---

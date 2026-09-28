@@ -1,3 +1,5 @@
+using SahibindenClone.Domain.Enums;
+
 namespace SahibindenClone.Domain.Entities
 {
     public class Advert : BaseEntity
@@ -5,6 +7,9 @@ namespace SahibindenClone.Domain.Entities
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }
+
+        public AdvertStatus Status { get;set; } = AdvertStatus.Active;
+        public DateTime ExpirationDate { get; set; }
 
         // İlanın Sahibi
         public int UserId { get; set; }

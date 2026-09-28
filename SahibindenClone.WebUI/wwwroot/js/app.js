@@ -228,6 +228,16 @@ async function fetchAdverts() {
             card.style.animationDelay = `${index * 0.05}s`;
             card.style.animation = 'slideUp .4s ease both';
 
+            // DURUM ROZETİ KONTROLÜ
+            let statusBadge = '';
+            if (advert.status === 2) {
+                statusBadge = `<div class="status-badge status-sold">SATILDI</div>`;
+                card.style.opacity = '0.8'; // Satılmış ilanı biraz soluk yapalım
+            } else if (advert.status === 3) {
+                statusBadge = `<div class="status-badge status-expired">SÜRESİ DOLDU</div>`;
+                card.style.opacity = '0.6';
+            }
+
             const priceFormatted = new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0 }).format(advert.price);
 
             const imageHtml = advert.imageUrl
@@ -249,6 +259,7 @@ async function fetchAdverts() {
             ` : '';
 
             card.innerHTML = `
+                ${statusBadge}
                 <div class="advert-image">${imageHtml}</div>
                 <div class="advert-card-body">
                     <a href="advert-detail.html?id=${advert.id}" class="advert-title" title="${advert.title}">${advert.title}</a>
