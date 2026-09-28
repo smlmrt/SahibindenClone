@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using SahibindenClone.Application.DTOs;
-using SahibindenClone.Application.Interfaces;
+using SahibindenClone.Application.Services;
 
 namespace SahibindenClone.WebUI.Controllers
 {
@@ -8,37 +7,17 @@ namespace SahibindenClone.WebUI.Controllers
     [ApiController]
     public class CategoriesController : ControllerBase
     {
-        private readonly ICategoryRepository _categoryRepository;
+        private readonly ICategoryService _categoryService;
 
-        public CategoriesController(ICategoryRepository categoryRepository)
+        public CategoriesController(ICategoryService categoryService)
         {
-            _categoryRepository = categoryRepository;
+            _categoryService = categoryService;
         }
 
         [HttpGet]
         public async Task<IActionResult> GetCategories()
         {
-            var categories = await _categoryRepository.GetAllWithSubCategoriesAsync();
-
-            // Sadece üst kategorileri al (ParentId == null), alt kategorileri içiçe döndür
-            var rootCategories = categories
-                .Where(c => c.ParentId == null)
-                .Select(c => new CategoryDto
-                {
-                    Id = c.Id,
-                    Name = c.Name,
-                    ParentId = c.ParentId,
-                    SubCategories = c.SubCategories
-                        .Where(sc => sc.IsActive)
-                        .Select(sc => new CategoryDto
-                        {
-                            Id = sc.Id,
-                            Name = sc.Name,
-                            ParentId = sc.ParentId
-                        }).ToList()
-                }).ToList();
-
-            return Ok(rootCategories);
+            return Ok(await _categoryService.GetCategoriesAsync());
         }
     }
 }

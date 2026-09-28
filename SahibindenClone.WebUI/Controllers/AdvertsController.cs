@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SahibindenClone.Application.DTOs;
-using SahibindenClone.Application.Interfaces;
-using SahibindenClone.Domain.Enums;
+using SahibindenClone.Application.Services;
+using SahibindenClone.Domain.Entities;
 using System.Security.Claims;
 
 namespace SahibindenClone.WebUI.Controllers
@@ -11,7 +11,7 @@ namespace SahibindenClone.WebUI.Controllers
     [ApiController]
     public class AdvertsController : ControllerBase
     {
-        private readonly IAdvertRepository _advertRepository;
+        private readonly IAdvertService _advertService;
         private readonly IWebHostEnvironment _env;
 
         // ──── İzin verilen dosya türleri ve maksimum boyut ────
@@ -19,9 +19,9 @@ namespace SahibindenClone.WebUI.Controllers
         private static readonly string[] AllowedMimeTypes = { "image/jpeg", "image/png", "image/webp" };
         private const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
 
-        public AdvertsController(IAdvertRepository advertRepository, IWebHostEnvironment env)
+        public AdvertsController(IAdvertService advertService, IWebHostEnvironment env)
         {
-            _advertRepository = advertRepository;
+            _advertService = advertService;
             _env = env;
         }
 
@@ -36,72 +36,22 @@ namespace SahibindenClone.WebUI.Controllers
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            if (page < 1) page = 1;
-            if (pageSize < 1) pageSize = 10;
-            if (pageSize > 100) pageSize = 100;
-
-            var (adverts, totalCount) = await _advertRepository.GetFilteredAdvertsAsync(
-                search, categoryId, cityId, minPrice, maxPrice, page, pageSize);
-
-            var dtoList = adverts.Select(a => new AdvertListDto
-            {
-                Id = a.Id,
-                Title = a.Title,
-                Price = a.Price,
-                CategoryName = a.Category?.Name ?? "Kategorisiz",
-                CityName = a.City?.Name ?? "Belirtilmemiş",
-                UserName = $"{a.User?.FirstName} {a.User?.LastName}",
-                Status = (int)a.Status,
-                StatusName = a.Status == AdvertStatus.Active ? "Aktif" :
-                             a.Status == AdvertStatus.Sold ? "Satıldı" :
-                             a.Status == AdvertStatus.Expired ? "Süresi Doldu" : "Onay Bekliyor",
-                CreatedAt = a.CreatedAt,
-                ImageUrl = a.Images?.OrderBy(i => i.SortOrder).FirstOrDefault(i => i.IsMain)?.ImageUrl 
-                           ?? a.Images?.OrderBy(i => i.SortOrder).FirstOrDefault()?.ImageUrl
-            }).ToList();
-
-            var result = new PaginatedResultDto<AdvertListDto>
-            {
-                Items = dtoList,
-                TotalCount = totalCount,
-                Page = page,
-                PageSize = pageSize
-            };
-
-            return Ok(result);
+            return Ok(await _advertService.GetAdvertsAsync(search, categoryId, cityId, minPrice, maxPrice, page, pageSize));
         }
 
         // İlan detayı — GET /api/adverts/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetAdvertById(int id)
         {
-            var advert = await _advertRepository.GetAdvertWithDetailsByIdAsync(id);
+            var advert = await _advertService.GetByIdAsync(id);
 
             if (advert == null) return NotFound("İlan bulunamadı.");
 
             return Ok(new
             {
-                Id = advert.Id,
-                Title = advert.Title,
-                Price = advert.Price,
-                Description = advert.Description,
-                CategoryId = advert.CategoryId,
-                CategoryName = advert.Category?.Name ?? "Kategorisiz",
-                CityId = advert.CityId,
-                CityName = advert.City?.Name ?? "Belirtilmemiş",
-                UserName = $"{advert.User?.FirstName} {advert.User?.LastName}",
-                UserId = advert.UserId, // Frontend yetki kontrolü
-                Status = (int)advert.Status,
-                StatusName = advert.Status == AdvertStatus.Active ? "Aktif" :
-                             advert.Status == AdvertStatus.Sold ? "Satıldı" :
-                             advert.Status == AdvertStatus.Expired ? "Süresi Doldu" : "Onay Bekliyor",
-                CreatedAt = advert.CreatedAt,
-                Images = advert.Images?.OrderBy(i => i.SortOrder).Select(i => new {
-                    i.Id,
-                    i.ImageUrl,
-                    i.IsMain,
-                    i.SortOrder
-                }).ToList()
+                advert.Id, advert.Title, advert.Price, advert.Description, advert.CategoryId, advert.CategoryName,
+                advert.CityId, advert.CityName, advert.UserName, advert.UserId, advert.Status, advert.StatusName,
+                advert.CreatedAt, advert.Images
             });
         }
 
@@ -117,20 +67,7 @@ namespace SahibindenClone.WebUI.Controllers
             if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
                 return Unauthorized(new { Message = "Geçersiz kullanıcı bilgisi." });
 
-            var newAdvert = new Domain.Entities.Advert
-            {
-                Title = dto.Title,
-                Description = dto.Description,
-                Price = dto.Price,
-                CategoryId = dto.CategoryId,
-                CityId = dto.CityId,
-                UserId = userId,
-                Status = AdvertStatus.Active, // İlan başlarken Aktif
-                ExpirationDate = DateTime.UtcNow.AddDays(30), // 30 gün süre
-                CreatedAt = DateTime.UtcNow,
-                IsActive = true,
-                Images = new List<Domain.Entities.AdvertImage>()
-            };
+            var advertImages = new List<AdvertImage>();
 
             if (images != null && images.Count > 0)
             {
@@ -144,7 +81,7 @@ namespace SahibindenClone.WebUI.Controllers
                             return BadRequest(new { Errors = new[] { imageValidation } });
 
                         var imageUrl = await SaveImageAsync(image);
-                        newAdvert.Images.Add(new Domain.Entities.AdvertImage
+                        advertImages.Add(new AdvertImage
                         {
                             ImageUrl = imageUrl,
                             IsMain = sortOrder == 0,
@@ -154,10 +91,8 @@ namespace SahibindenClone.WebUI.Controllers
                 }
             }
 
-            await _advertRepository.AddAsync(newAdvert);
-            await _advertRepository.SaveChangesAsync();
-
-            return Ok(new { Message = "İlan başarıyla oluşturuldu!", Id = newAdvert.Id });
+            var createResult = await _advertService.CreateAsync(dto, userId, advertImages);
+            return Ok(new { Message = "İlan başarıyla oluşturuldu!", Id = createResult.Value });
         }
 
         // İlan güncelleme — PUT /api/adverts/{id}
@@ -168,24 +103,13 @@ namespace SahibindenClone.WebUI.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(new { Errors = GetValidationErrors() });
 
-            var advert = await _advertRepository.GetAdvertWithDetailsByIdAsync(id);
-            if (advert == null || !advert.IsActive)
-                return NotFound(new { Message = "İlan bulunamadı." });
-
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (advert.UserId.ToString() != userId)
-                return StatusCode(403, new { Message = "Bu ilanı düzenleme yetkiniz yok." });
-
-            advert.Title = dto.Title;
-            advert.Description = dto.Description;
-            advert.Price = dto.Price;
-            advert.CategoryId = dto.CategoryId;
-            advert.CityId = dto.CityId;
-            advert.UpdatedAt = DateTime.UtcNow;
-
+            if (!TryGetUserId(out var userId)) return Unauthorized(new { Message = "Geçersiz kullanıcı bilgisi." });
+            var permissionResult = await _advertService.CanUpdateAsync(id, userId);
+            if (!permissionResult.Succeeded) return ToActionResult(permissionResult, string.Empty);
+            var advertImages = new List<AdvertImage>();
             if (images != null && images.Count > 0)
             {
-                int sortOrder = advert.Images?.Count ?? 0;
+                int sortOrder = 0;
                 foreach (var image in images)
                 {
                     if (image.Length > 0)
@@ -195,21 +119,18 @@ namespace SahibindenClone.WebUI.Controllers
                             return BadRequest(new { Errors = new[] { imageValidation } });
 
                         var imageUrl = await SaveImageAsync(image);
-                        if (advert.Images == null) advert.Images = new List<Domain.Entities.AdvertImage>();
-                        advert.Images.Add(new Domain.Entities.AdvertImage
+                        advertImages.Add(new AdvertImage
                         {
                             ImageUrl = imageUrl,
-                            IsMain = sortOrder == 0 && advert.Images.Count == 0,
+                            IsMain = false,
                             SortOrder = sortOrder++
                         });
                     }
                 }
             }
 
-            _advertRepository.Update(advert);
-            await _advertRepository.SaveChangesAsync();
-
-            return Ok(new { Message = "İlan başarıyla güncellendi!" });
+            var updateResult = await _advertService.UpdateAsync(id, dto, userId, advertImages);
+            return ToActionResult(updateResult, "İlan başarıyla güncellendi!");
         }
 
         // Satıldı Olarak İşaretle — PUT /api/adverts/{id}/mark-sold
@@ -217,24 +138,9 @@ namespace SahibindenClone.WebUI.Controllers
         [HttpPut("{id}/mark-sold")]
         public async Task<IActionResult> MarkAsSold(int id)
         {
-            var advert = await _advertRepository.GetByIdAsync(id);
-            if (advert == null || !advert.IsActive)
-                return NotFound(new { Message = "İlan bulunamadı." });
-
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (advert.UserId.ToString() != userId)
-                return StatusCode(403, new { Message = "Bu işlemi yapma yetkiniz yok." });
-
-            if (advert.Status == AdvertStatus.Sold)
-                return BadRequest(new { Message = "İlan zaten satıldı olarak işaretlenmiş." });
-
-            advert.Status = AdvertStatus.Sold;
-            advert.UpdatedAt = DateTime.UtcNow;
-
-            _advertRepository.Update(advert);
-            await _advertRepository.SaveChangesAsync();
-
-            return Ok(new { Message = "İlan başarıyla 'Satıldı' olarak işaretlendi!" });
+            if (!TryGetUserId(out var userId)) return Unauthorized(new { Message = "Geçersiz kullanıcı bilgisi." });
+            var result = await _advertService.MarkAsSoldAsync(id, userId);
+            return ToActionResult(result, "İlan başarıyla 'Satıldı' olarak işaretlendi!");
         }
 
         // İlan silme (soft delete) — DELETE /api/adverts/{id}
@@ -242,21 +148,24 @@ namespace SahibindenClone.WebUI.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAdvert(int id)
         {
-            var advert = await _advertRepository.GetByIdAsync(id);
-            if (advert == null || !advert.IsActive)
-                return NotFound(new { Message = "İlan bulunamadı." });
+            if (!TryGetUserId(out var userId)) return Unauthorized(new { Message = "Geçersiz kullanıcı bilgisi." });
+            var result = await _advertService.DeleteAsync(id, userId);
+            return ToActionResult(result, "İlan başarıyla silindi.");
+        }
 
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (advert.UserId.ToString() != userId)
-                return StatusCode(403, new { Message = "Bu ilanı silme yetkiniz yok." });
+        private bool TryGetUserId(out int userId) => int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out userId);
 
-            advert.IsActive = false;
-            advert.UpdatedAt = DateTime.UtcNow;
-
-            _advertRepository.Update(advert);
-            await _advertRepository.SaveChangesAsync();
-
-            return Ok(new { Message = "İlan başarıyla silindi." });
+        private IActionResult ToActionResult<T>(ServiceResult<T> result, string successMessage)
+        {
+            if (result.Succeeded) return Ok(new { Message = successMessage });
+            var body = new { Message = result.Message };
+            return result.Error switch
+            {
+                ServiceError.NotFound => NotFound(body),
+                ServiceError.Forbidden => StatusCode(403, body),
+                ServiceError.Unauthorized => Unauthorized(body),
+                _ => BadRequest(body)
+            };
         }
 
         // ──── Yardımcı: Görsel dosya validasyonu ────

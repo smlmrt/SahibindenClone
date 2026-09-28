@@ -5,6 +5,7 @@ using SahibindenClone.Application.Interfaces;
 using SahibindenClone.Infrastructure.Context;
 using SahibindenClone.Infrastructure.Repositories;
 using SahibindenClone.Infrastructure.Services; // Arka plan servisi için
+using SahibindenClone.Application.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,6 +46,9 @@ builder.Services.AddScoped<IAdvertRepository, AdvertRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
+builder.Services.AddScoped<IAdvertService, AdvertService>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // ARKA PLAN SERVİSİ: İlan süresi kontrolü (builder.Build()'den ÖNCE olmalıdır)
 builder.Services.AddHostedService<AdvertExpirationWorker>();
