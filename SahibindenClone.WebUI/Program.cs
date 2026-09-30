@@ -33,6 +33,22 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtSettings["Audience"],
         ValidateLifetime = true
     };
+    // SignalR (WebSocket) için QueryString'den Token okuma ayarı
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+
+            // Eğer istek SignalR hub'ına geliyorsa ve token varsa, token'ı oradan al
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/notificationHub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
 });
 // -----------------------------------
 
@@ -49,9 +65,11 @@ builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 builder.Services.AddScoped<IAdvertService, AdvertService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<INotificationService, SahibindenClone.WebUI.Services.NotificationService>();
 
 // ARKA PLAN SERVİSİ: İlan süresi kontrolü (builder.Build()'den ÖNCE olmalıdır)
 builder.Services.AddHostedService<AdvertExpirationWorker>();
+builder.Services.AddSignalR();
 
 // API Controller'ları
 builder.Services.AddControllers();
@@ -86,5 +104,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers(); // API rotalarını aktifleştirir
+app.MapHub<SahibindenClone.WebUI.Hubs.NotificationHub>("/notificationHub");
 
 app.Run();

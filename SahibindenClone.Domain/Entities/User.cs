@@ -10,6 +10,9 @@ namespace SahibindenClone.Domain.Entities
         // Bir kullanıcının birden fazla ilanı olabilir
         public virtual ICollection<Advert> Adverts { get; set; } = new List<Advert>();
 
+        // Bir kullanıcının birden fazla bildirimi olabilir
+        public virtual ICollection<Notification> Notifications { get; set; } = new List<Notification>();
+
         // Bir kullanıcının birden fazla favorisi olabilir
         public virtual ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();
     }

@@ -57,5 +57,13 @@ namespace SahibindenClone.Infrastructure.Repositories
         {
             return await _context.SaveChangesAsync();
         }
+
+        public async Task<List<int>> GetUsersWhoFavoritedAdvertAsync(int advertId)
+        {
+            return await _context.Favorites
+                .Where(f => f.AdvertId == advertId)
+                .Select(f => f.UserId)
+                .ToListAsync();
+        }
     }
 }

@@ -6,7 +6,7 @@ using SahibindenClone.Domain.Enums;
 
 namespace SahibindenClone.Infrastructure.Services;
 
-public sealed class AdvertService(IAdvertRepository adverts) : IAdvertService
+public sealed class AdvertService(IAdvertRepository adverts, INotificationService notifications) : IAdvertService
 {
     public async Task<PaginatedResultDto<AdvertListDto>> GetAdvertsAsync(string? search, int? categoryId, int? cityId,
         decimal? minPrice, decimal? maxPrice, int page, int pageSize)
@@ -64,8 +64,16 @@ public sealed class AdvertService(IAdvertRepository adverts) : IAdvertService
         var advert = await adverts.GetAdvertWithDetailsByIdAsync(id);
         if (advert is null) return ServiceResult<bool>.Failure(ServiceError.NotFound, "İlan bulunamadı.");
         if (advert.UserId != userId) return ServiceResult<bool>.Failure(ServiceError.Forbidden, "Bu ilanı düzenleme yetkiniz yok.");
-        advert.Title = dto.Title; advert.Description = dto.Description; advert.Price = dto.Price;
-        advert.CategoryId = dto.CategoryId; advert.CityId = dto.CityId; advert.UpdatedAt = DateTime.UtcNow;
+        
+        bool isPriceDropped = dto.Price < advert.Price;
+        
+        advert.Title = dto.Title; 
+        advert.Description = dto.Description; 
+        advert.Price = dto.Price;
+        advert.CategoryId = dto.CategoryId; 
+        advert.CityId = dto.CityId; 
+        advert.UpdatedAt = DateTime.UtcNow;
+
         if (images is { Count: > 0 })
         {
             var sortOrder = advert.Images.Count == 0 ? 0 : advert.Images.Max(i => i.SortOrder) + 1;
@@ -76,8 +84,15 @@ public sealed class AdvertService(IAdvertRepository adverts) : IAdvertService
                 advert.Images.Add(image);
             }
         }
+
         adverts.Update(advert);
         await adverts.SaveChangesAsync();
+
+        if (isPriceDropped)
+        {
+            await notifications.NotifyPriceDropAsync(advert.Id, advert.Title, dto.Price);
+        }
+
         return ServiceResult<bool>.Success(true);
     }
 
@@ -104,6 +119,7 @@ public sealed class AdvertService(IAdvertRepository adverts) : IAdvertService
 
     private static string? MainImage(IEnumerable<AdvertImage>? images) => images?.OrderBy(i => i.SortOrder).FirstOrDefault(i => i.IsMain)?.ImageUrl
         ?? images?.OrderBy(i => i.SortOrder).FirstOrDefault()?.ImageUrl;
+
     private static string StatusName(AdvertStatus status) => status switch
     {
         AdvertStatus.Active => "Aktif", AdvertStatus.Sold => "Satıldı", AdvertStatus.Expired => "Süresi Doldu", _ => "Onay Bekliyor"

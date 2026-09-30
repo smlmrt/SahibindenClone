@@ -19,6 +19,8 @@ namespace SahibindenClone.Application.Interfaces
         /// <summary>Kullanıcının favori ilan ID'lerini getirir (kalp ikonu için).</summary>
         Task<List<int>> GetUserFavoriteAdvertIdsAsync(int userId);
 
+        Task<List<int>> GetUsersWhoFavoritedAdvertAsync(int advertId);
+
         Task<int> SaveChangesAsync();
     }
 }

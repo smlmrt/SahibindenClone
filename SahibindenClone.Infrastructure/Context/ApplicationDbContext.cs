@@ -13,6 +13,7 @@ namespace SahibindenClone.Infrastructure.Context
         public DbSet<Advert> Adverts { get; set; }
         public DbSet<AdvertImage> AdvertImages { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -52,6 +53,12 @@ namespace SahibindenClone.Infrastructure.Context
                 .HasOne(ai => ai.Advert)
                 .WithMany(a => a.Images)
                 .HasForeignKey(ai => ai.AdvertId)
+                .OnDelete(DeleteBehavior.Cascade);
+            
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany(u => u.Notifications)
+                .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
     }
