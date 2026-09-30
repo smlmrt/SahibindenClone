@@ -20,6 +20,8 @@ namespace SahibindenClone.Infrastructure.Context
         {
             base.OnModelCreating(modelBuilder);
 
+            modelBuilder.Entity<User>().Property(u => u.Role).HasDefaultValue("User");
+
             modelBuilder.Entity<Category>()
                 .HasOne(c => c.Parent)
                 .WithMany(c => c.SubCategories)

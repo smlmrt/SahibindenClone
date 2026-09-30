@@ -17,6 +17,13 @@
         const userName = localStorage.getItem('userName');
 
         if (token && userName) {
+            if (localStorage.getItem('userRole') === 'Admin') {
+                const adminLink = document.createElement('a');
+                adminLink.href = 'admin.html';
+                adminLink.className = 'nav-item';
+                adminLink.textContent = 'Admin Paneli';
+                nav.appendChild(adminLink);
+            }
             // Kullanıcı giriş yapmış - Bildirim zili, Adı ve Çıkış butonu
             const userInfo = document.createElement('div');
             userInfo.className = 'user-info';

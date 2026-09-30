@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Paneli - SahibindenClone</title>
+  <link rel="stylesheet" href="css/site.css" />
+  <style>
+    .admin-wrap{max-width:1200px;margin:28px auto;padding:0 18px}.admin-title{margin:0 0 20px;color:#111827}
+    .admin-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}.admin-tabs button,.admin-btn{border:0;border-radius:8px;padding:10px 14px;background:#1d4ed8;color:#fff;font-weight:600;cursor:pointer}
+    .admin-tabs button{background:#e5e7eb;color:#374151}.admin-tabs button.active{background:#1d4ed8;color:white}.admin-panel{background:white;border-radius:12px;padding:20px;box-shadow:0 2px 12px #10182812;overflow:auto}
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:18px}.stat{padding:18px;border:1px solid #e5e7eb;border-radius:10px}.stat strong{display:block;font-size:26px;color:#1d4ed8}.stat span{font-size:13px;color:#667085}
+    table{width:100%;border-collapse:collapse;min-width:650px}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid #eaecf0;font-size:14px}th{color:#475467;background:#f9fafb}
+    .admin-btn.danger{background:#dc2626}.admin-btn.muted{background:#475467}.admin-btn.small{padding:7px 10px;font-size:12px;margin-right:4px}.admin-form{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px}.admin-form input,.admin-form select{padding:10px;border:1px solid #d0d5dd;border-radius:8px;min-width:180px}.section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.notice{padding:12px;border-radius:8px;margin-bottom:14px;display:none}.notice.error{display:block;background:#fef2f2;color:#b42318}.notice.ok{display:block;background:#ecfdf3;color:#027a48}
+    @media(max-width:600px){.admin-panel{padding:14px}.section-head{align-items:flex-start;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <header class="header"><div class="header-container"><a href="index.html" class="logo">SahibindenClone</a><nav class="nav-links"><a href="index.html" class="nav-item">Ana Sayfa</a></nav></div></header>
+  <main class="admin-wrap">
+    <h1 class="admin-title">Yönetim Paneli</h1>
+    <div id="notice" class="notice"></div>
+    <nav class="admin-tabs"><button class="active" data-tab="dashboard">Genel Bakış</button><button data-tab="adverts">İlan Onayı</button><button data-tab="users">Kullanıcılar</button><button data-tab="categories">Kategoriler</button></nav>
+    <section id="adminContent" class="admin-panel">Yükleniyor...</section>
+  </main>
+  <script src="js/auth-nav.js"></script><script src="js/admin.js"></script>
+</body>
+</html>

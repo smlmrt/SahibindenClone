@@ -36,6 +36,19 @@ builder.Services.AddAuthentication(options =>
     // SignalR (WebSocket) için QueryString'den Token okuma ayarı
     options.Events = new JwtBearerEvents
     {
+        OnTokenValidated = async context =>
+        {
+            var userIdValue = context.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(userIdValue, out var userId))
+            {
+                context.Fail("Geçersiz kullanıcı bilgisi.");
+                return;
+            }
+
+            var db = context.HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            var isActive = await db.Users.AnyAsync(u => u.Id == userId && u.IsActive);
+            if (!isActive) context.Fail("Kullanıcı hesabı etkin değil.");
+        },
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];
@@ -65,6 +78,7 @@ builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
 builder.Services.AddScoped<IAdvertService, AdvertService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<INotificationService, SahibindenClone.WebUI.Services.NotificationService>();
 
 // ARKA PLAN SERVİSİ: İlan süresi kontrolü (builder.Build()'den ÖNCE olmalıdır)
@@ -85,6 +99,16 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
         DbInitializer.Initialize(context);
+        var adminEmail = app.Configuration["Admin:Email"];
+        if (!string.IsNullOrWhiteSpace(adminEmail))
+        {
+            var adminUser = context.Users.FirstOrDefault(u => u.Email.ToLower() == adminEmail.Trim().ToLower());
+            if (adminUser is not null && adminUser.Role != "Admin")
+            {
+                adminUser.Role = "Admin";
+                context.SaveChanges();
+            }
+        }
     }
     catch (Exception ex)
     {

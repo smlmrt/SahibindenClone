@@ -33,7 +33,7 @@ namespace SahibindenClone.Infrastructure.Repositories
         public async Task<List<Advert>> GetUserFavoriteAdvertsAsync(int userId)
         {
             return await _context.Favorites
-                .Where(f => f.UserId == userId && f.Advert.IsActive)
+                .Where(f => f.UserId == userId && f.Advert.IsActive && f.Advert.User.IsActive && f.Advert.Status == Domain.Enums.AdvertStatus.Active)
                 .Include(f => f.Advert)
                     .ThenInclude(a => a.Category)
                 .Include(f => f.Advert)

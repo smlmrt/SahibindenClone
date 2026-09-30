@@ -28,7 +28,7 @@ namespace SahibindenClone.WebUI.Controllers
         {
             var result = await _authService.LoginAsync(dto);
             if (!result.Succeeded) return Unauthorized(new { Message = result.Message });
-            return Ok(new { result.Value!.Token, result.Value.UserId, result.Value.UserName });
+            return Ok(new { result.Value!.Token, result.Value.UserId, result.Value.UserName, result.Value.Role });
         }
 
     }

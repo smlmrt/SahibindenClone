@@ -6,6 +6,7 @@ namespace SahibindenClone.Domain.Entities
         public string LastName { get; set; } = string.Empty;
         public string Email { get; set; } = string.Empty;
         public string PasswordHash { get; set; } = string.Empty;
+        public string Role { get; set; } = "User";
 
         // Bir kullanıcının birden fazla ilanı olabilir
         public virtual ICollection<Advert> Adverts { get; set; } = new List<Advert>();

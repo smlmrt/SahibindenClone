@@ -5,6 +5,7 @@ namespace SahibindenClone.Domain.Enums
         Active = 1,
         Sold = 2,
         Expired = 3,
-        PendingApproval = 4
+        PendingApproval = 4,
+        Rejected = 5
     }
 }

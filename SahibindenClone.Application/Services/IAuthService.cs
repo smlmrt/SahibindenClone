@@ -2,7 +2,7 @@ using SahibindenClone.Application.DTOs;
 
 namespace SahibindenClone.Application.Services;
 
-public sealed record AuthResult(string Token, int UserId, string UserName);
+public sealed record AuthResult(string Token, int UserId, string UserName, string Role);
 
 public interface IAuthService
 {

@@ -16,7 +16,7 @@ namespace SahibindenClone.Infrastructure.Repositories
                 .Include(a => a.City)
                 .Include(a => a.User)
                 .Include(a => a.Images)
-                .Where(a => a.IsActive)
+                .Where(a => a.IsActive && a.User.IsActive)
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
         }
@@ -28,14 +28,14 @@ namespace SahibindenClone.Infrastructure.Repositories
                 .Include(a => a.City)
                 .Include(a => a.User)
                 .Include(a => a.Images)
-                .FirstOrDefaultAsync(a => a.Id == id && a.IsActive);
+                .FirstOrDefaultAsync(a => a.Id == id && a.IsActive && a.User.IsActive);
         }
 
         public async Task<IEnumerable<Advert>> GetAdvertsByCategoryIdAsync(int categoryId)
         {
             return await _context.Adverts
                 .Include(a => a.Images)
-                .Where(a => a.CategoryId == categoryId && a.IsActive)
+                .Where(a => a.CategoryId == categoryId && a.IsActive && a.User.IsActive)
                 .OrderByDescending(a => a.CreatedAt)
                 .ToListAsync();
         }
@@ -54,7 +54,7 @@ namespace SahibindenClone.Infrastructure.Repositories
                 .Include(a => a.City)
                 .Include(a => a.User)
                 .Include(a => a.Images)
-                .Where(a => a.IsActive && a.Status == Domain.Enums.AdvertStatus.Active) 
+                .Where(a => a.IsActive && a.User.IsActive && a.Status == Domain.Enums.AdvertStatus.Active)
                 .AsQueryable();
 
             // Arama filtresi

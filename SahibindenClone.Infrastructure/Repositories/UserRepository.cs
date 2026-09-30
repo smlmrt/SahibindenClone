@@ -11,10 +11,10 @@ namespace SahibindenClone.Infrastructure.Repositories
 
         public async Task<User?> GetUserWithAdvertsAsync(int id)
         {
-            return await _context.Users
-                .Include(u => u.Adverts.Where(a => a.IsActive))
+            return await _context.Users.AsNoTracking()
+                .Include(u => u.Adverts.Where(a => a.IsActive && a.Status == Domain.Enums.AdvertStatus.Active))
                 .ThenInclude(a => a.Category)
-                .Include(u => u.Adverts)
+                .Include(u => u.Adverts.Where(a => a.IsActive && a.Status == Domain.Enums.AdvertStatus.Active))
                 .ThenInclude(a => a.Images)
                 .FirstOrDefaultAsync(u => u.Id == id && u.IsActive);
         }

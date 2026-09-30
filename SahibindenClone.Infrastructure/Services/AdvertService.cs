@@ -31,7 +31,7 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
     public async Task<AdvertDetailDto?> GetByIdAsync(int id)
     {
         var a = await adverts.GetAdvertWithDetailsByIdAsync(id);
-        return a is null ? null : new AdvertDetailDto(a.Id, a.Title, a.Price, a.Description, a.CategoryId,
+        return a is null || a.Status is AdvertStatus.PendingApproval or AdvertStatus.Rejected ? null : new AdvertDetailDto(a.Id, a.Title, a.Price, a.Description, a.CategoryId,
             a.Category?.Name ?? "Kategorisiz", a.CityId, a.City?.Name ?? "Belirtilmemiş",
             $"{a.User?.FirstName} {a.User?.LastName}", a.UserId, (int)a.Status, StatusName(a.Status), a.CreatedAt,
             a.Images.OrderBy(i => i.SortOrder).Select(i => new AdvertImageDto(i.Id, i.ImageUrl, i.IsMain, i.SortOrder)).ToList());
@@ -50,7 +50,7 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
         var advert = new Advert
         {
             Title = dto.Title, Description = dto.Description, Price = dto.Price, CategoryId = dto.CategoryId,
-            CityId = dto.CityId, UserId = userId, Status = AdvertStatus.Active,
+            CityId = dto.CityId, UserId = userId, Status = AdvertStatus.PendingApproval,
             ExpirationDate = DateTime.UtcNow.AddDays(30), CreatedAt = DateTime.UtcNow,
             Images = images?.ToList() ?? new List<AdvertImage>()
         };
@@ -122,6 +122,7 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
 
     private static string StatusName(AdvertStatus status) => status switch
     {
-        AdvertStatus.Active => "Aktif", AdvertStatus.Sold => "Satıldı", AdvertStatus.Expired => "Süresi Doldu", _ => "Onay Bekliyor"
+        AdvertStatus.Active => "Aktif", AdvertStatus.Sold => "Satıldı", AdvertStatus.Expired => "Süresi Doldu",
+        AdvertStatus.Rejected => "Reddedildi", _ => "Onay Bekliyor"
     };
 }
