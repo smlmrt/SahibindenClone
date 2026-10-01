@@ -17,6 +17,9 @@ async function fetchAdvertDetail(id) {
         const advert = await response.json();
         renderAdvert(advert);
         checkFavoriteStatus(advert.id);
+        loadSellerReviewSummary(advert.userId);
+        const currentUserId = Number(localStorage.getItem('userId'));
+        if (currentUserId === advert.userId || localStorage.getItem('userRole') === 'Admin') loadAdvertHistory(advert.id);
     } catch (error) {
         showError("İlan yüklenirken bir hata oluştu.");
     }
@@ -32,6 +35,9 @@ function renderAdvert(advert) {
     });
 
     const initials = getInitials(advert.userName);
+    const isOwner = Number(localStorage.getItem('userId')) === advert.userId;
+    const purchaseButton = localStorage.getItem('token') && !isOwner && advert.status === 1
+        ? `<button class="contact-btn" id="purchaseRequestBtn" onclick="requestPurchase(${advert.id})">Satın alma talebi gönder</button>` : '';
 
     // Breadcrumb güncelle
     const breadcrumb = document.getElementById('breadcrumb');
@@ -141,6 +147,8 @@ function renderAdvert(advert) {
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
                         ${advert.categoryName}
                     </span>
+                    ${advert.brand ? `<span class="meta-chip">Marka: ${escapeHtml(advert.brand)}</span>` : ''}
+                    ${advert.model ? `<span class="meta-chip">Model: ${escapeHtml(advert.model)}</span>` : ''}
                     <span class="meta-chip">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                         ${dateFormatted}
@@ -160,7 +168,8 @@ function renderAdvert(advert) {
             <div class="seller-card fade-up fade-up-delay-1">
                 <div class="seller-avatar">${initials}</div>
                 <div class="seller-name">${escapeHtml(advert.userName)}</div>
-                <div class="seller-since">Bireysel Satıcı</div>
+                <a class="seller-since" href="seller-reviews.html?userId=${advert.userId}" id="sellerRatingSummary">Satıcı değerlendirmelerini gör</a>
+                ${purchaseButton}
                 <button class="contact-btn" onclick="alert('Bu özellik henüz aktif değil.')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
                     İletişime Geç
@@ -190,6 +199,8 @@ function renderAdvert(advert) {
                         <span class="info-label">Kategori</span>
                         <span class="info-value">${advert.categoryName}</span>
                     </li>
+                    ${advert.brand ? `<li><span class="info-label">Marka</span><span class="info-value">${escapeHtml(advert.brand)}</span></li>` : ''}
+                    ${advert.model ? `<li><span class="info-label">Model</span><span class="info-value">${escapeHtml(advert.model)}</span></li>` : ''}
                     <li>
                         <span class="info-label">İlan Tarihi</span>
                         <span class="info-value">${dateFormatted}</span>
@@ -207,6 +218,48 @@ function renderAdvert(advert) {
             </a>
         </div>
     `;
+    if (isOwner || localStorage.getItem('userRole') === 'Admin') {
+        const historySection = document.createElement('section');
+        historySection.id = 'advertChangeHistory';
+        historySection.className = 'description-card';
+        historySection.innerHTML = '<h2>İlan değişiklik geçmişi</h2><p>Yükleniyor...</p>';
+        container.appendChild(historySection);
+    }
+}
+
+async function requestPurchase(advertId) {
+    const token = localStorage.getItem('token');
+    if (!token) { location.href = 'login.html'; return; }
+    try {
+        const response = await fetch('/api/purchases', { method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ advertId }) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || data.message || 'Talep gönderilemedi.');
+        alert('Satın alma talebiniz satıcıya iletildi. Durumu İşlemlerim sayfasından takip edebilirsiniz.');
+        location.href = 'transactions.html';
+    } catch (error) { alert(error.message || 'Sunucuya ulaşılamadı.'); }
+}
+
+async function loadSellerReviewSummary(userId) {
+    try {
+        const response = await fetch(`/api/users/${userId}/reviews`);
+        if (!response.ok) return;
+        const summary = await response.json();
+        const link = document.getElementById('sellerRatingSummary');
+        if (link) link.textContent = summary.reviewCount
+            ? `★ ${summary.averageRating.toFixed(1)} / 5 · ${summary.reviewCount} değerlendirme`
+            : 'Henüz değerlendirme yok';
+    } catch (error) { console.error('Satıcı değerlendirmeleri alınamadı.', error); }
+}
+
+async function loadAdvertHistory(advertId) {
+    const section = document.getElementById('advertChangeHistory');
+    if (!section) return;
+    try {
+        const response = await fetch(`/api/adverts/${advertId}/history`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+        if (!response.ok) throw new Error('Değişiklik geçmişi alınamadı.');
+        const history = await response.json();
+        section.innerHTML = `<h2>İlan değişiklik geçmişi</h2>${history.length ? history.map(change => `<article style="padding:12px 0;border-bottom:1px solid #eee"><strong>${escapeHtml(change.changedByName)}</strong> · ${new Date(change.createdAt).toLocaleString('tr-TR')}<p>Fiyat: ${Number(change.previousPrice).toLocaleString('tr-TR')} ₺ → ${Number(change.newPrice).toLocaleString('tr-TR')} ₺</p><p>Başlık: ${escapeHtml(change.previousTitle)} → ${escapeHtml(change.newTitle)}</p><details><summary>Açıklama değişikliği</summary><p>Önce: ${escapeHtml(change.previousDescription)}</p><p>Sonra: ${escapeHtml(change.newDescription)}</p></details></article>`).join('') : '<p>Henüz kayıtlı değişiklik yok.</p>'}`;
+    } catch (error) { section.innerHTML = `<h2>İlan değişiklik geçmişi</h2><p>${escapeHtml(error.message)}</p>`; }
 }
 
 // ═══════════════ SATILDI İŞARETLEME ═══════════════
@@ -227,7 +280,7 @@ async function markAsSold(id) {
             window.location.reload(); // Değişikliği anında görmek için sayfayı yenile
         } else {
             const errorData = await response.json().catch(() => null);
-            alert(errorData?.message || "Bir hata oluştu.");
+            alert(errorData?.error || errorData?.message || "Bir hata oluştu.");
         }
     } catch (error) {
         console.error("Hata:", error);

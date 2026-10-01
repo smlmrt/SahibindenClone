@@ -14,6 +14,10 @@ namespace SahibindenClone.Infrastructure.Context
         public DbSet<AdvertImage> AdvertImages { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<PurchaseTransaction> PurchaseTransactions { get; set; }
+        public DbSet<SellerReview> SellerReviews { get; set; }
+        public DbSet<AdvertChangeHistory> AdvertChangeHistories { get; set; }
+        public DbSet<AdminAuditLog> AdminAuditLogs { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -21,6 +25,19 @@ namespace SahibindenClone.Infrastructure.Context
             base.OnModelCreating(modelBuilder);
 
             modelBuilder.Entity<User>().Property(u => u.Role).HasDefaultValue("User");
+            modelBuilder.Entity<Advert>().Property(a => a.Brand).HasMaxLength(100);
+            modelBuilder.Entity<Advert>().Property(a => a.Model).HasMaxLength(100);
+
+            modelBuilder.Entity<PurchaseTransaction>().HasOne(t => t.Advert).WithMany().HasForeignKey(t => t.AdvertId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PurchaseTransaction>().HasOne(t => t.Buyer).WithMany().HasForeignKey(t => t.BuyerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<PurchaseTransaction>().HasOne(t => t.Seller).WithMany().HasForeignKey(t => t.SellerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SellerReview>().HasOne(r => r.PurchaseTransaction).WithOne(t => t.Review).HasForeignKey<SellerReview>(r => r.PurchaseTransactionId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SellerReview>().HasIndex(r => new { r.PurchaseTransactionId, r.ReviewerId }).IsUnique();
+            modelBuilder.Entity<SellerReview>().HasOne(r => r.Reviewer).WithMany().HasForeignKey(r => r.ReviewerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<SellerReview>().HasOne(r => r.Seller).WithMany().HasForeignKey(r => r.SellerId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AdvertChangeHistory>().HasOne(h => h.Advert).WithMany().HasForeignKey(h => h.AdvertId).OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<AdvertChangeHistory>().HasOne(h => h.ChangedByUser).WithMany().HasForeignKey(h => h.ChangedByUserId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<AdminAuditLog>().HasOne(l => l.AdminUser).WithMany().HasForeignKey(l => l.AdminUserId).OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Category>()
                 .HasOne(c => c.Parent)

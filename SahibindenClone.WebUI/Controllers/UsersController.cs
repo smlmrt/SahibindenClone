@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SahibindenClone.Application.DTOs;
 using SahibindenClone.Application.Interfaces;
+using SahibindenClone.Application.Services;
 
 namespace SahibindenClone.WebUI.Controllers
 {
@@ -9,11 +10,16 @@ namespace SahibindenClone.WebUI.Controllers
     public class UsersController : ControllerBase
     {
         private readonly IUserRepository _userRepository;
+        private readonly IPurchaseService _purchaseService;
 
-        public UsersController(IUserRepository userRepository)
+        public UsersController(IUserRepository userRepository, IPurchaseService purchaseService)
         {
             _userRepository = userRepository;
+            _purchaseService = purchaseService;
         }
+
+        [HttpGet("{id}/reviews")]
+        public async Task<IActionResult> GetSellerReviews(int id) => Ok(await _purchaseService.GetSellerReviewsAsync(id));
 
         /// GET: api/users/{id}/profile
         /// Kullanıcı profilini ve aktif ilanlarını getirir

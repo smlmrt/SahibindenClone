@@ -7,6 +7,8 @@ namespace SahibindenClone.Domain.Entities
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }
+        public string? Brand { get; set; }
+        public string? Model { get; set; }
 
         public AdvertStatus Status { get;set; } = AdvertStatus.Active;
         public DateTime ExpirationDate { get; set; }

@@ -143,6 +143,8 @@ if (form) {
         formData.append("Title", title);
         formData.append("Description", description);
         formData.append("Price", price);
+        formData.append("Brand", document.getElementById('brand').value.trim());
+        formData.append("Model", document.getElementById('model').value.trim());
         formData.append("CategoryId", categoryId);
         formData.append("CityId", cityId); // ŞEHİR VERİSİ EKLENDİ
         formData.append("UserId", userId);
@@ -161,7 +163,7 @@ if (form) {
             });
 
             if (response.ok) {
-                showMessage("İlan başarıyla yayına alındı! Ana sayfaya yönlendiriliyorsunuz...", "success");
+                showMessage("İlanınız onaya gönderildi. Onaylandıktan sonra yayına alınacak.", "success");
                 setTimeout(() => {
                     window.location.href = "index.html";
                 }, 2000);
@@ -174,8 +176,8 @@ if (form) {
                     } else if (typeof errorData.errors === 'object') {
                         errorMsg = Object.values(errorData.errors).flat().join('\n');
                     }
-                } else if (errorData?.message) {
-                    errorMsg = errorData.message;
+                } else if (errorData?.error || errorData?.message) {
+                    errorMsg = errorData.error || errorData.message;
                 }
                 showMessage(errorMsg, "error");
             }

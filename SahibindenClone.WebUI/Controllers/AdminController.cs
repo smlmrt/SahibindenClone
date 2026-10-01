@@ -21,6 +21,7 @@ public sealed class AdminController(IAdminService admin) : ControllerBase
     [HttpPut("adverts/{id:int}/decision")]
     public async Task<IActionResult> DecideAdvert(int id, [FromBody] AdvertDecisionDto dto)
     {
+        if (!TryGetAdminId(out var adminId)) return Unauthorized();
         var status = dto.Decision.Trim().ToLowerInvariant() switch
         {
             "approve" => AdvertStatus.Active,
@@ -28,7 +29,7 @@ public sealed class AdminController(IAdminService admin) : ControllerBase
             _ => (AdvertStatus?)null
         };
         if (!status.HasValue) return BadRequest(new { message = "Karar approve veya reject olmalıdır." });
-        var result = await admin.SetAdvertStatusAsync(id, status.Value);
+        var result = await admin.SetAdvertStatusAsync(id, status.Value, adminId);
         return Result(result, "İlan kararı kaydedildi.");
     }
 
@@ -48,15 +49,29 @@ public sealed class AdminController(IAdminService admin) : ControllerBase
     [HttpPost("categories")]
     public async Task<IActionResult> CreateCategory([FromBody] AdminCategoryUpsertDto dto)
     {
-        var result = await admin.CreateCategoryAsync(dto);
+        if (!TryGetAdminId(out var adminId)) return Unauthorized();
+        var result = await admin.CreateCategoryAsync(dto, adminId);
         return result.Succeeded ? Created($"/api/admin/categories/{result.Value}", new { id = result.Value }) : Failure(result);
     }
 
     [HttpPut("categories/{id:int}")]
-    public async Task<IActionResult> UpdateCategory(int id, [FromBody] AdminCategoryUpsertDto dto) => Result(await admin.UpdateCategoryAsync(id, dto), "Kategori güncellendi.");
+    public async Task<IActionResult> UpdateCategory(int id, [FromBody] AdminCategoryUpsertDto dto)
+    {
+        if (!TryGetAdminId(out var adminId)) return Unauthorized();
+        return Result(await admin.UpdateCategoryAsync(id, dto, adminId), "Kategori güncellendi.");
+    }
 
     [HttpDelete("categories/{id:int}")]
-    public async Task<IActionResult> DeleteCategory(int id) => Result(await admin.DeleteCategoryAsync(id), "Kategori silindi.");
+    public async Task<IActionResult> DeleteCategory(int id)
+    {
+        if (!TryGetAdminId(out var adminId)) return Unauthorized();
+        return Result(await admin.DeleteCategoryAsync(id, adminId), "Kategori silindi.");
+    }
+
+    [HttpGet("audit-logs")]
+    public async Task<IActionResult> AuditLogs([FromQuery] int limit = 100) => Ok(await admin.GetAuditLogsAsync(limit));
+
+    private bool TryGetAdminId(out int adminId) => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out adminId);
 
     private IActionResult Result<T>(ServiceResult<T> result, string message) => result.Succeeded ? Ok(new { message }) : Failure(result);
     private IActionResult Failure<T>(ServiceResult<T> result) => result.Error switch

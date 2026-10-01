@@ -17,6 +17,11 @@
         const userName = localStorage.getItem('userName');
 
         if (token && userName) {
+            const transactionsLink = document.createElement('a');
+            transactionsLink.href = 'transactions.html';
+            transactionsLink.className = 'nav-item';
+            transactionsLink.textContent = 'İşlemlerim';
+            nav.appendChild(transactionsLink);
             if (localStorage.getItem('userRole') === 'Admin') {
                 const adminLink = document.createElement('a');
                 adminLink.href = 'admin.html';

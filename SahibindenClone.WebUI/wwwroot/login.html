@@ -67,7 +67,7 @@
             } else {
                 const err = await response.json();
                 document.getElementById('resultMessage').style.color = "red";
-                document.getElementById('resultMessage').innerText = err.message || "Giriş başarısız.";
+                document.getElementById('resultMessage').innerText = err.error || err.message || "Giriş başarısız.";
             }
         });
     </script>

@@ -44,6 +44,20 @@
                     <input type="number" id="minPrice" class="filter-input" placeholder="Min ₺">
                     <span class="filter-label">—</span>
                     <input type="number" id="maxPrice" class="filter-input" placeholder="Max ₺">
+                    <input type="text" id="brandFilter" class="filter-input" placeholder="Marka">
+                    <input type="text" id="modelFilter" class="filter-input" placeholder="Model">
+                </div>
+                <div class="filter-row">
+                    <span class="filter-label">İlan tarihi:</span>
+                    <input type="date" id="createdFrom" class="filter-input" aria-label="Başlangıç tarihi">
+                    <span class="filter-label">—</span>
+                    <input type="date" id="createdTo" class="filter-input" aria-label="Bitiş tarihi">
+                    <select id="sortBy" class="filter-input" aria-label="Sıralama">
+                        <option value="newest">En yeni</option>
+                        <option value="oldest">En eski</option>
+                        <option value="price-asc">Fiyat: artan</option>
+                        <option value="price-desc">Fiyat: azalan</option>
+                    </select>
                     <button id="filterBtn" class="filter-btn">Filtrele</button>
                     <button id="clearFilterBtn" class="filter-clear-btn">Temizle</button>
                 </div>
@@ -60,6 +74,6 @@
     </div>
 
     <script src="js/auth-nav.js"></script>
-    <script src="js/app.js?v=2"></script>
+    <script src="js/app.js?v=3"></script>
 </body>
 </html>

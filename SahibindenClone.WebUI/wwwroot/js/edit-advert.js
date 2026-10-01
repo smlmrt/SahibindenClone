@@ -88,6 +88,14 @@ function renderEditForm(advert, categories, cities) {
                 <input type="number" id="price" class="form-control" required value="${advert.price}">
             </div>
             <div class="form-group">
+                <label>Marka (isteğe bağlı)</label>
+                <input type="text" id="brand" class="form-control" maxlength="100" value="${escapeAttr(advert.brand || '')}">
+            </div>
+            <div class="form-group">
+                <label>Model (isteğe bağlı)</label>
+                <input type="text" id="model" class="form-control" maxlength="100" value="${escapeAttr(advert.model || '')}">
+            </div>
+            <div class="form-group">
                 <label>Kategori</label>
                 <select id="categoryId" class="form-control">
                     ${categoryOptions}
@@ -165,6 +173,8 @@ async function submitEdit(id) {
     formData.append("Title", title);
     formData.append("Description", description);
     formData.append("Price", price);
+    formData.append("Brand", document.getElementById('brand').value.trim());
+    formData.append("Model", document.getElementById('model').value.trim());
     formData.append("CategoryId", categoryId);
     formData.append("CityId", cityId);
 
@@ -202,8 +212,8 @@ async function submitEdit(id) {
                     } else if (typeof errorData.errors === 'object') {
                         errorMsg = Object.values(errorData.errors).flat().join('\n');
                     }
-                } else if (errorData?.message) {
-                    errorMsg = errorData.message;
+                } else if (errorData?.error || errorData?.message) {
+                    errorMsg = errorData.error || errorData.message;
                 }
                 showMessage(errorMsg, "error");
             }

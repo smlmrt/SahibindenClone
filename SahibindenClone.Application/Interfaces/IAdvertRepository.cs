@@ -7,6 +7,8 @@ namespace SahibindenClone.Application.Interfaces
         Task<IEnumerable<Advert>> GetAdvertsWithDetailsAsync();
         Task<Advert?> GetAdvertWithDetailsByIdAsync(int id);
         Task<IEnumerable<Advert>> GetAdvertsByCategoryIdAsync(int categoryId);
+        Task AddChangeHistoryAsync(AdvertChangeHistory history);
+        Task<IReadOnlyList<AdvertChangeHistory>> GetChangeHistoryAsync(int advertId);
 
         /// <summary>
         /// Filtreleme, arama ve sayfalama destekli ilan listesi
@@ -17,6 +19,11 @@ namespace SahibindenClone.Application.Interfaces
             int? cityId,
             decimal? minPrice,
             decimal? maxPrice,
+            string? brand,
+            string? model,
+            DateOnly? createdFrom,
+            DateOnly? createdTo,
+            string? sortBy,
             int page,
             int pageSize);
     }

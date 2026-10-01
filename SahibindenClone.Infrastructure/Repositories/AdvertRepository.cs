@@ -9,6 +9,12 @@ namespace SahibindenClone.Infrastructure.Repositories
     {
         public AdvertRepository(ApplicationDbContext context) : base(context) { }
 
+        public async Task AddChangeHistoryAsync(AdvertChangeHistory history) => await _context.AdvertChangeHistories.AddAsync(history);
+
+        public async Task<IReadOnlyList<AdvertChangeHistory>> GetChangeHistoryAsync(int advertId) => await _context.AdvertChangeHistories
+            .AsNoTracking().Include(h => h.ChangedByUser).Where(h => h.AdvertId == advertId)
+            .OrderByDescending(h => h.CreatedAt).ToListAsync();
+
         public async Task<IEnumerable<Advert>> GetAdvertsWithDetailsAsync()
         {
             return await _context.Adverts
@@ -46,6 +52,11 @@ namespace SahibindenClone.Infrastructure.Repositories
             int? cityId,
             decimal? minPrice,
             decimal? maxPrice,
+            string? brand,
+            string? model,
+            DateOnly? createdFrom,
+            DateOnly? createdTo,
+            string? sortBy,
             int page,
             int pageSize)
         {
@@ -75,9 +86,20 @@ namespace SahibindenClone.Infrastructure.Repositories
             // Minimum ve Maksimum fiyat filtreleri
             if (minPrice.HasValue) query = query.Where(a => a.Price >= minPrice.Value);
             if (maxPrice.HasValue) query = query.Where(a => a.Price <= maxPrice.Value);
+            if (!string.IsNullOrWhiteSpace(brand)) query = query.Where(a => a.Brand != null && a.Brand.ToLower().Contains(brand.Trim().ToLower()));
+            if (!string.IsNullOrWhiteSpace(model)) query = query.Where(a => a.Model != null && a.Model.ToLower().Contains(model.Trim().ToLower()));
+            if (createdFrom.HasValue) query = query.Where(a => a.CreatedAt >= createdFrom.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
+            if (createdTo.HasValue) query = query.Where(a => a.CreatedAt < createdTo.Value.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc));
 
             var totalCount = await query.CountAsync();
-            var items = await query.OrderByDescending(a => a.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
+            query = sortBy?.ToLowerInvariant() switch
+            {
+                "oldest" => query.OrderBy(a => a.CreatedAt),
+                "price-asc" => query.OrderBy(a => a.Price).ThenByDescending(a => a.CreatedAt),
+                "price-desc" => query.OrderByDescending(a => a.Price).ThenByDescending(a => a.CreatedAt),
+                _ => query.OrderByDescending(a => a.CreatedAt)
+            };
+            var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
             return (items, totalCount);
         }

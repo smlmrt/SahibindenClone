@@ -107,7 +107,7 @@
                         const errorMessages = Object.values(err.errors).flat().join('\n');
                         resultMessage.innerText = errorMessages;
                     } else {
-                        resultMessage.innerText = err.message || "Kayıt işlemi başarısız oldu.";
+                        resultMessage.innerText = err.error || err.message || "Kayıt işlemi başarısız oldu.";
                     }
                 }
             } catch (error) {

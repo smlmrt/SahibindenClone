@@ -29,7 +29,7 @@ public sealed class AdminService(ApplicationDbContext db) : IAdminService
             .ToListAsync();
     }
 
-    public async Task<ServiceResult<bool>> SetAdvertStatusAsync(int id, AdvertStatus status)
+    public async Task<ServiceResult<bool>> SetAdvertStatusAsync(int id, AdvertStatus status, int adminUserId)
     {
         if (status is not (AdvertStatus.Active or AdvertStatus.Rejected))
             return ServiceResult<bool>.Failure(ServiceError.InvalidOperation, "Yalnızca onaylama veya reddetme işlemi yapılabilir.");
@@ -39,6 +39,7 @@ public sealed class AdminService(ApplicationDbContext db) : IAdminService
             return ServiceResult<bool>.Failure(ServiceError.InvalidOperation, "Yalnızca onay bekleyen ilanlar karara bağlanabilir.");
         advert.Status = status;
         advert.UpdatedAt = DateTime.UtcNow;
+        AddAudit(adminUserId, status == AdvertStatus.Active ? "advert.approved" : "advert.rejected", "Advert", id, $"İlan {StatusName(status)} olarak işaretlendi.");
         await db.SaveChangesAsync();
         return ServiceResult<bool>.Success(true);
     }
@@ -59,6 +60,8 @@ public sealed class AdminService(ApplicationDbContext db) : IAdminService
             return ServiceResult<bool>.Failure(ServiceError.InvalidOperation, "Admin hesapları bu panelden devre dışı bırakılamaz.");
         user.IsActive = isActive;
         user.UpdatedAt = DateTime.UtcNow;
+        AddAudit(actingAdminId, isActive ? "user.activated" : "user.deactivated", "User", id,
+            $"{user.Email} hesabı {(isActive ? "etkinleştirildi" : "devre dışı bırakıldı")}.");
         await db.SaveChangesAsync();
         return ServiceResult<bool>.Success(true);
     }
@@ -69,17 +72,21 @@ public sealed class AdminService(ApplicationDbContext db) : IAdminService
             c.IsActive, c.Adverts.Count(a => a.IsActive)))
         .ToListAsync();
 
-    public async Task<ServiceResult<int>> CreateCategoryAsync(AdminCategoryUpsertDto dto)
+    public async Task<ServiceResult<int>> CreateCategoryAsync(AdminCategoryUpsertDto dto, int adminUserId)
     {
         var validation = await ValidateCategoryAsync(dto, null);
         if (validation is not null) return ServiceResult<int>.Failure(validation.Value.Error, validation.Value.Message);
         var category = new Category { Name = dto.Name.Trim(), ParentId = dto.ParentId, IsActive = true, CreatedAt = DateTime.UtcNow };
+        await using var transaction = await db.Database.BeginTransactionAsync();
         db.Categories.Add(category);
         await db.SaveChangesAsync();
+        AddAudit(adminUserId, "category.created", "Category", category.Id, $"'{category.Name}' kategorisi oluşturuldu.");
+        await db.SaveChangesAsync();
+        await transaction.CommitAsync();
         return ServiceResult<int>.Success(category.Id);
     }
 
-    public async Task<ServiceResult<bool>> UpdateCategoryAsync(int id, AdminCategoryUpsertDto dto)
+    public async Task<ServiceResult<bool>> UpdateCategoryAsync(int id, AdminCategoryUpsertDto dto, int adminUserId)
     {
         var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == id);
         if (category is null) return ServiceResult<bool>.Failure(ServiceError.NotFound, "Kategori bulunamadı.");
@@ -89,11 +96,12 @@ public sealed class AdminService(ApplicationDbContext db) : IAdminService
         category.ParentId = dto.ParentId;
         category.IsActive = true;
         category.UpdatedAt = DateTime.UtcNow;
+        AddAudit(adminUserId, "category.updated", "Category", id, $"Kategori adı '{category.Name}' olarak güncellendi.");
         await db.SaveChangesAsync();
         return ServiceResult<bool>.Success(true);
     }
 
-    public async Task<ServiceResult<bool>> DeleteCategoryAsync(int id)
+    public async Task<ServiceResult<bool>> DeleteCategoryAsync(int id, int adminUserId)
     {
         var category = await db.Categories.FirstOrDefaultAsync(c => c.Id == id && c.IsActive);
         if (category is null) return ServiceResult<bool>.Failure(ServiceError.NotFound, "Kategori bulunamadı.");
@@ -101,9 +109,28 @@ public sealed class AdminService(ApplicationDbContext db) : IAdminService
             return ServiceResult<bool>.Failure(ServiceError.InvalidOperation, "Önce bu kategoriye bağlı alt kategorileri taşıyın veya silin.");
         category.IsActive = false;
         category.UpdatedAt = DateTime.UtcNow;
+        AddAudit(adminUserId, "category.deactivated", "Category", id, $"'{category.Name}' kategorisi silindi.");
         await db.SaveChangesAsync();
         return ServiceResult<bool>.Success(true);
     }
+
+    public async Task<IReadOnlyList<AdminAuditLogDto>> GetAuditLogsAsync(int limit)
+    {
+        limit = Math.Clamp(limit, 1, 200);
+        return await db.AdminAuditLogs.AsNoTracking().Include(log => log.AdminUser)
+            .OrderByDescending(log => log.CreatedAt).Take(limit)
+            .Select(log => new AdminAuditLogDto(log.Id, log.AdminUserId,
+                log.AdminUser.FirstName + " " + log.AdminUser.LastName,
+                log.Action, log.TargetType, log.TargetId, log.Details, log.CreatedAt))
+            .ToListAsync();
+    }
+
+    private void AddAudit(int adminUserId, string action, string targetType, int targetId, string details) =>
+        db.AdminAuditLogs.Add(new AdminAuditLog
+        {
+            AdminUserId = adminUserId, Action = action, TargetType = targetType,
+            TargetId = targetId, Details = details, CreatedAt = DateTime.UtcNow
+        });
 
     private async Task<(ServiceError Error, string Message)?> ValidateCategoryAsync(AdminCategoryUpsertDto dto, int? id)
     {

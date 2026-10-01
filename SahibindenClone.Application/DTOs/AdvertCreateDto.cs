@@ -18,6 +18,12 @@ namespace SahibindenClone.Application.DTOs
         [Range(0, 999_999_999, ErrorMessage = "Fiyat 0 ile 999.999.999 TL arasında olmalıdır.")]
         public decimal Price { get; set; }
 
+        [MaxLength(100)]
+        public string? Brand { get; set; }
+
+        [MaxLength(100)]
+        public string? Model { get; set; }
+
         [Required(ErrorMessage = "Kategori seçimi zorunludur.")]
         [Range(1, int.MaxValue, ErrorMessage = "Geçerli bir kategori seçiniz.")]
         public int CategoryId { get; set; }

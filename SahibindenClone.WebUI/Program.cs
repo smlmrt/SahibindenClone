@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SahibindenClone.Application.Interfaces;
@@ -6,6 +7,7 @@ using SahibindenClone.Infrastructure.Context;
 using SahibindenClone.Infrastructure.Repositories;
 using SahibindenClone.Infrastructure.Services; // Arka plan servisi için
 using SahibindenClone.Application.Services;
+using SahibindenClone.WebUI.Errors;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -49,6 +51,17 @@ builder.Services.AddAuthentication(options =>
             var isActive = await db.Users.AnyAsync(u => u.Id == userId && u.IsActive);
             if (!isActive) context.Fail("Kullanıcı hesabı etkin değil.");
         },
+        OnChallenge = async context =>
+        {
+            context.HandleResponse();
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            await context.Response.WriteAsJsonAsync(new ApiErrorResponse("Kimlik doğrulaması gerekiyor.", StatusCodes.Status401Unauthorized));
+        },
+        OnForbidden = async context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            await context.Response.WriteAsJsonAsync(new ApiErrorResponse("Bu işlem için yetkiniz yok.", StatusCodes.Status403Forbidden));
+        },
         OnMessageReceived = context =>
         {
             var accessToken = context.Request.Query["access_token"];
@@ -79,6 +92,7 @@ builder.Services.AddScoped<IAdvertService, AdvertService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IPurchaseService, PurchaseService>();
 builder.Services.AddScoped<INotificationService, SahibindenClone.WebUI.Services.NotificationService>();
 
 // ARKA PLAN SERVİSİ: İlan süresi kontrolü (builder.Build()'den ÖNCE olmalıdır)
@@ -86,7 +100,20 @@ builder.Services.AddHostedService<AdvertExpirationWorker>();
 builder.Services.AddSignalR();
 
 // API Controller'ları
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => options.Filters.Add<ApiErrorResultFilter>())
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var validationMessage = string.Join(" ", context.ModelState.Values
+                .SelectMany(value => value.Errors)
+                .Select(error => error.ErrorMessage)
+                .Where(message => !string.IsNullOrWhiteSpace(message))
+                .Distinct());
+            var message = string.IsNullOrWhiteSpace(validationMessage) ? "İstek doğrulanamadı." : validationMessage;
+            return new BadRequestObjectResult(new ApiErrorResponse(message, StatusCodes.Status400BadRequest));
+        };
+    });
 
 // DİKKAT: Bu satırdan sonra builder.Services değiştirilemez!
 var app = builder.Build();
@@ -118,7 +145,23 @@ using (var scope = app.Services.CreateScope())
 // --- SEED İŞLEMİ BİTİŞİ ---
 
 // Statik HTML dosyalarının (index.html) varsayılan olarak açılmasını sağlar
-app.UseDefaultFiles(); 
+app.UseMiddleware<GlobalExceptionMiddleware>();
+app.UseStatusCodePages(async statusCodeContext =>
+{
+    var httpContext = statusCodeContext.HttpContext;
+    if (!httpContext.Request.Path.StartsWithSegments("/api")) return;
+
+    var statusCode = httpContext.Response.StatusCode;
+    var message = statusCode switch
+    {
+        StatusCodes.Status404NotFound => "İstenen kaynak bulunamadı.",
+        StatusCodes.Status401Unauthorized => "Kimlik doğrulaması gerekiyor.",
+        StatusCodes.Status403Forbidden => "Bu işlem için yetkiniz yok.",
+        _ => "İstek işlenemedi."
+    };
+    await httpContext.Response.WriteAsJsonAsync(new ApiErrorResponse(message, statusCode));
+});
+app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseRouting();

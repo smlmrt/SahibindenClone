@@ -11,6 +11,9 @@ public sealed record AdminUserDto(int Id, string FirstName, string LastName, str
 public sealed record AdminDashboardDto(int UserCount, int ActiveUserCount, int AdvertCount,
     int PendingAdvertCount, int ActiveAdvertCount, int RejectedAdvertCount, int CategoryCount);
 
+public sealed record AdminAuditLogDto(int Id, int AdminUserId, string AdminName, string Action,
+    string TargetType, int TargetId, string Details, DateTime CreatedAt);
+
 public sealed class AdminCategoryUpsertDto
 {
     [Required, StringLength(80, MinimumLength = 2)]

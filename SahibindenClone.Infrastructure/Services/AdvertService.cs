@@ -9,17 +9,19 @@ namespace SahibindenClone.Infrastructure.Services;
 public sealed class AdvertService(IAdvertRepository adverts, INotificationService notifications) : IAdvertService
 {
     public async Task<PaginatedResultDto<AdvertListDto>> GetAdvertsAsync(string? search, int? categoryId, int? cityId,
-        decimal? minPrice, decimal? maxPrice, int page, int pageSize)
+        decimal? minPrice, decimal? maxPrice, string? brand, string? model, DateOnly? createdFrom, DateOnly? createdTo,
+        string? sortBy, int page, int pageSize)
     {
         page = Math.Max(1, page);
         if (pageSize < 1) pageSize = 10;
         pageSize = Math.Min(pageSize, 100);
-        var (items, count) = await adverts.GetFilteredAdvertsAsync(search, categoryId, cityId, minPrice, maxPrice, page, pageSize);
+        var (items, count) = await adverts.GetFilteredAdvertsAsync(search, categoryId, cityId, minPrice, maxPrice,
+            brand, model, createdFrom, createdTo, sortBy, page, pageSize);
         return new PaginatedResultDto<AdvertListDto>
         {
             Items = items.Select(a => new AdvertListDto
             {
-                Id = a.Id, Title = a.Title, Price = a.Price, CategoryName = a.Category?.Name ?? "Kategorisiz",
+                Id = a.Id, Title = a.Title, Price = a.Price, Brand = a.Brand, Model = a.Model, CategoryName = a.Category?.Name ?? "Kategorisiz",
                 CityName = a.City?.Name ?? "Belirtilmemiş", UserName = $"{a.User?.FirstName} {a.User?.LastName}",
                 Status = (int)a.Status, StatusName = StatusName(a.Status), CreatedAt = a.CreatedAt,
                 ImageUrl = MainImage(a.Images)
@@ -31,7 +33,7 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
     public async Task<AdvertDetailDto?> GetByIdAsync(int id)
     {
         var a = await adverts.GetAdvertWithDetailsByIdAsync(id);
-        return a is null || a.Status is AdvertStatus.PendingApproval or AdvertStatus.Rejected ? null : new AdvertDetailDto(a.Id, a.Title, a.Price, a.Description, a.CategoryId,
+        return a is null || a.Status is AdvertStatus.PendingApproval or AdvertStatus.Rejected ? null : new AdvertDetailDto(a.Id, a.Title, a.Price, a.Description, a.Brand, a.Model, a.CategoryId,
             a.Category?.Name ?? "Kategorisiz", a.CityId, a.City?.Name ?? "Belirtilmemiş",
             $"{a.User?.FirstName} {a.User?.LastName}", a.UserId, (int)a.Status, StatusName(a.Status), a.CreatedAt,
             a.Images.OrderBy(i => i.SortOrder).Select(i => new AdvertImageDto(i.Id, i.ImageUrl, i.IsMain, i.SortOrder)).ToList());
@@ -50,6 +52,7 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
         var advert = new Advert
         {
             Title = dto.Title, Description = dto.Description, Price = dto.Price, CategoryId = dto.CategoryId,
+            Brand = dto.Brand?.Trim(), Model = dto.Model?.Trim(),
             CityId = dto.CityId, UserId = userId, Status = AdvertStatus.PendingApproval,
             ExpirationDate = DateTime.UtcNow.AddDays(30), CreatedAt = DateTime.UtcNow,
             Images = images?.ToList() ?? new List<AdvertImage>()
@@ -66,10 +69,22 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
         if (advert.UserId != userId) return ServiceResult<bool>.Failure(ServiceError.Forbidden, "Bu ilanı düzenleme yetkiniz yok.");
         
         bool isPriceDropped = dto.Price < advert.Price;
+        if (advert.Title != dto.Title || advert.Description != dto.Description || advert.Price != dto.Price)
+        {
+            await adverts.AddChangeHistoryAsync(new AdvertChangeHistory
+            {
+                AdvertId = advert.Id, ChangedByUserId = userId,
+                PreviousTitle = advert.Title, NewTitle = dto.Title,
+                PreviousDescription = advert.Description, NewDescription = dto.Description,
+                PreviousPrice = advert.Price, NewPrice = dto.Price, CreatedAt = DateTime.UtcNow
+            });
+        }
         
         advert.Title = dto.Title; 
         advert.Description = dto.Description; 
         advert.Price = dto.Price;
+        advert.Brand = dto.Brand?.Trim();
+        advert.Model = dto.Model?.Trim();
         advert.CategoryId = dto.CategoryId; 
         advert.CityId = dto.CityId; 
         advert.UpdatedAt = DateTime.UtcNow;
@@ -115,6 +130,14 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
         advert.IsActive = false; advert.UpdatedAt = DateTime.UtcNow;
         adverts.Update(advert); await adverts.SaveChangesAsync();
         return ServiceResult<bool>.Success(true);
+    }
+
+    public async Task<IReadOnlyList<AdvertChangeHistoryDto>> GetChangeHistoryAsync(int advertId)
+    {
+        var history = await adverts.GetChangeHistoryAsync(advertId);
+        return history.Select(h => new AdvertChangeHistoryDto(h.Id, h.AdvertId, h.ChangedByUserId,
+            $"{h.ChangedByUser.FirstName} {h.ChangedByUser.LastName}", h.PreviousTitle, h.NewTitle,
+            h.PreviousDescription, h.NewDescription, h.PreviousPrice, h.NewPrice, h.CreatedAt)).ToList();
     }
 
     private static string? MainImage(IEnumerable<AdvertImage>? images) => images?.OrderBy(i => i.SortOrder).FirstOrDefault(i => i.IsMain)?.ImageUrl

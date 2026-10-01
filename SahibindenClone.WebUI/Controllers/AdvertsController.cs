@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SahibindenClone.Application.DTOs;
+using SahibindenClone.Application.Interfaces;
 using SahibindenClone.Application.Services;
 using SahibindenClone.Domain.Entities;
 using System.Security.Claims;
@@ -13,16 +14,29 @@ namespace SahibindenClone.WebUI.Controllers
     {
         private readonly IAdvertService _advertService;
         private readonly IWebHostEnvironment _env;
+        private readonly IAdvertRepository _advertRepository;
 
         // ──── İzin verilen dosya türleri ve maksimum boyut ────
         private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".webp" };
         private static readonly string[] AllowedMimeTypes = { "image/jpeg", "image/png", "image/webp" };
         private const long MaxFileSize = 5 * 1024 * 1024; // 5 MB
 
-        public AdvertsController(IAdvertService advertService, IWebHostEnvironment env)
+        public AdvertsController(IAdvertService advertService, IAdvertRepository advertRepository, IWebHostEnvironment env)
         {
             _advertService = advertService;
+            _advertRepository = advertRepository;
             _env = env;
+        }
+
+        [Authorize]
+        [HttpGet("{id}/history")]
+        public async Task<IActionResult> GetChangeHistory(int id)
+        {
+            var advert = await _advertRepository.GetByIdAsync(id);
+            if (advert is null || !advert.IsActive) return NotFound("İlan bulunamadı.");
+            if (!TryGetUserId(out var userId)) return Unauthorized();
+            if (advert.UserId != userId && !User.IsInRole("Admin")) return Forbid();
+            return Ok(await _advertService.GetChangeHistoryAsync(id));
         }
 
         // İlan listesi — Arama, Filtreleme, Sayfalama destekli
@@ -33,10 +47,16 @@ namespace SahibindenClone.WebUI.Controllers
             [FromQuery] int? cityId,
             [FromQuery] decimal? minPrice,
             [FromQuery] decimal? maxPrice,
+            [FromQuery] string? brand,
+            [FromQuery] string? model,
+            [FromQuery] DateOnly? createdFrom,
+            [FromQuery] DateOnly? createdTo,
+            [FromQuery] string? sortBy = "newest",
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 20)
         {
-            return Ok(await _advertService.GetAdvertsAsync(search, categoryId, cityId, minPrice, maxPrice, page, pageSize));
+            return Ok(await _advertService.GetAdvertsAsync(search, categoryId, cityId, minPrice, maxPrice,
+                brand, model, createdFrom, createdTo, sortBy, page, pageSize));
         }
 
         // İlan detayı — GET /api/adverts/{id}
@@ -49,7 +69,7 @@ namespace SahibindenClone.WebUI.Controllers
 
             return Ok(new
             {
-                advert.Id, advert.Title, advert.Price, advert.Description, advert.CategoryId, advert.CategoryName,
+                advert.Id, advert.Title, advert.Price, advert.Description, advert.Brand, advert.Model, advert.CategoryId, advert.CategoryName,
                 advert.CityId, advert.CityName, advert.UserName, advert.UserId, advert.Status, advert.StatusName,
                 advert.CreatedAt, advert.Images
             });

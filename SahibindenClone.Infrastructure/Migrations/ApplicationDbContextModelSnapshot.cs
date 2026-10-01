@@ -26,6 +26,10 @@ namespace SahibindenClone.Infrastructure.Migrations
                     b.Property<int>("CategoryId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Brand")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("CityId")
                         .HasColumnType("INTEGER");
 
@@ -47,6 +51,10 @@ namespace SahibindenClone.Infrastructure.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("INTEGER");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
                         .IsRequired()
@@ -102,6 +110,42 @@ namespace SahibindenClone.Infrastructure.Migrations
                     b.HasIndex("AdvertId");
 
                     b.ToTable("AdvertImages");
+                });
+
+            modelBuilder.Entity("SahibindenClone.Domain.Entities.AdminAuditLog", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("Action").IsRequired().HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAt").HasColumnType("TEXT");
+                    b.Property<string>("Details").IsRequired().HasColumnType("TEXT");
+                    b.Property<bool>("IsActive").HasColumnType("INTEGER");
+                    b.Property<int>("AdminUserId").HasColumnType("INTEGER");
+                    b.Property<int>("TargetId").HasColumnType("INTEGER");
+                    b.Property<string>("TargetType").IsRequired().HasColumnType("TEXT");
+                    b.Property<DateTime?>("UpdatedAt").HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("AdminUserId");
+                    b.ToTable("AdminAuditLogs");
+                });
+
+            modelBuilder.Entity("SahibindenClone.Domain.Entities.AdvertChangeHistory", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<int>("AdvertId").HasColumnType("INTEGER");
+                    b.Property<int>("ChangedByUserId").HasColumnType("INTEGER");
+                    b.Property<DateTime>("CreatedAt").HasColumnType("TEXT");
+                    b.Property<bool>("IsActive").HasColumnType("INTEGER");
+                    b.Property<string>("NewDescription").IsRequired().HasColumnType("TEXT");
+                    b.Property<decimal>("NewPrice").HasColumnType("TEXT");
+                    b.Property<string>("NewTitle").IsRequired().HasColumnType("TEXT");
+                    b.Property<string>("PreviousDescription").IsRequired().HasColumnType("TEXT");
+                    b.Property<decimal>("PreviousPrice").HasColumnType("TEXT");
+                    b.Property<string>("PreviousTitle").IsRequired().HasColumnType("TEXT");
+                    b.Property<DateTime?>("UpdatedAt").HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("AdvertId");
+                    b.HasIndex("ChangedByUserId");
+                    b.ToTable("AdvertChangeHistories");
                 });
 
             modelBuilder.Entity("SahibindenClone.Domain.Entities.Category", b =>
@@ -217,6 +261,42 @@ namespace SahibindenClone.Infrastructure.Migrations
                     b.ToTable("Notifications");
                 });
 
+            modelBuilder.Entity("SahibindenClone.Domain.Entities.PurchaseTransaction", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<int>("AdvertId").HasColumnType("INTEGER");
+                    b.Property<int>("BuyerId").HasColumnType("INTEGER");
+                    b.Property<DateTime?>("CompletedAt").HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAt").HasColumnType("TEXT");
+                    b.Property<bool>("IsActive").HasColumnType("INTEGER");
+                    b.Property<int>("SellerId").HasColumnType("INTEGER");
+                    b.Property<int>("Status").HasColumnType("INTEGER");
+                    b.Property<DateTime?>("UpdatedAt").HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("BuyerId");
+                    b.HasIndex("SellerId");
+                    b.ToTable("PurchaseTransactions");
+                });
+
+            modelBuilder.Entity("SahibindenClone.Domain.Entities.SellerReview", b =>
+                {
+                    b.Property<int>("Id").ValueGeneratedOnAdd().HasColumnType("INTEGER");
+                    b.Property<string>("Comment").IsRequired().HasColumnType("TEXT");
+                    b.Property<DateTime>("CreatedAt").HasColumnType("TEXT");
+                    b.Property<bool>("IsActive").HasColumnType("INTEGER");
+                    b.Property<int>("PurchaseTransactionId").HasColumnType("INTEGER");
+                    b.Property<int>("Rating").HasColumnType("INTEGER");
+                    b.Property<int>("ReviewerId").HasColumnType("INTEGER");
+                    b.Property<int>("SellerId").HasColumnType("INTEGER");
+                    b.Property<DateTime?>("UpdatedAt").HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("PurchaseTransactionId").IsUnique();
+                    b.HasIndex("ReviewerId");
+                    b.HasIndex("SellerId");
+                    b.HasIndex("PurchaseTransactionId", "ReviewerId").IsUnique();
+                    b.ToTable("SellerReviews");
+                });
+
             modelBuilder.Entity("SahibindenClone.Domain.Entities.User", b =>
                 {
                     b.Property<int>("Id")
@@ -296,6 +376,23 @@ namespace SahibindenClone.Infrastructure.Migrations
                     b.Navigation("Advert");
                 });
 
+            modelBuilder.Entity("SahibindenClone.Domain.Entities.AdminAuditLog", b =>
+                {
+                    b.HasOne("SahibindenClone.Domain.Entities.User", "AdminUser")
+                        .WithMany().HasForeignKey("AdminUserId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.Navigation("AdminUser");
+                });
+
+            modelBuilder.Entity("SahibindenClone.Domain.Entities.AdvertChangeHistory", b =>
+                {
+                    b.HasOne("SahibindenClone.Domain.Entities.Advert", "Advert")
+                        .WithMany().HasForeignKey("AdvertId").OnDelete(DeleteBehavior.Cascade).IsRequired();
+                    b.HasOne("SahibindenClone.Domain.Entities.User", "ChangedByUser")
+                        .WithMany().HasForeignKey("ChangedByUserId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.Navigation("Advert");
+                    b.Navigation("ChangedByUser");
+                });
+
             modelBuilder.Entity("SahibindenClone.Domain.Entities.Category", b =>
                 {
                     b.HasOne("SahibindenClone.Domain.Entities.Category", "Parent")
@@ -334,6 +431,34 @@ namespace SahibindenClone.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SahibindenClone.Domain.Entities.PurchaseTransaction", b =>
+                {
+                    b.HasOne("SahibindenClone.Domain.Entities.Advert", "Advert")
+                        .WithMany().HasForeignKey("AdvertId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("SahibindenClone.Domain.Entities.User", "Buyer")
+                        .WithMany().HasForeignKey("BuyerId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("SahibindenClone.Domain.Entities.User", "Seller")
+                        .WithMany().HasForeignKey("SellerId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.Navigation("Advert");
+                    b.Navigation("Buyer");
+                    b.Navigation("Seller");
+                    b.Navigation("Review");
+                });
+
+            modelBuilder.Entity("SahibindenClone.Domain.Entities.SellerReview", b =>
+                {
+                    b.HasOne("SahibindenClone.Domain.Entities.PurchaseTransaction", "PurchaseTransaction")
+                        .WithOne("Review").HasForeignKey("SahibindenClone.Domain.Entities.SellerReview", "PurchaseTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("SahibindenClone.Domain.Entities.User", "Reviewer")
+                        .WithMany().HasForeignKey("ReviewerId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.HasOne("SahibindenClone.Domain.Entities.User", "Seller")
+                        .WithMany().HasForeignKey("SellerId").OnDelete(DeleteBehavior.Restrict).IsRequired();
+                    b.Navigation("PurchaseTransaction");
+                    b.Navigation("Reviewer");
+                    b.Navigation("Seller");
                 });
 
             modelBuilder.Entity("SahibindenClone.Domain.Entities.Advert", b =>

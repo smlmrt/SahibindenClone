@@ -5,6 +5,11 @@ let currentState = {
     cityId: null, // ŞEHİR DURUMU EKLENDİ
     minPrice: null,
     maxPrice: null,
+    brand: '',
+    model: '',
+    createdFrom: '',
+    createdTo: '',
+    sortBy: 'newest',
     page: 1,
     pageSize: 20
 };
@@ -98,6 +103,17 @@ function setupEventListeners() {
         const maxVal = document.getElementById('maxPrice').value;
         currentState.minPrice = minVal ? parseFloat(minVal) : null;
         currentState.maxPrice = maxVal ? parseFloat(maxVal) : null;
+        currentState.brand = document.getElementById('brandFilter').value.trim();
+        currentState.model = document.getElementById('modelFilter').value.trim();
+        currentState.createdFrom = document.getElementById('createdFrom').value;
+        currentState.createdTo = document.getElementById('createdTo').value;
+        currentState.sortBy = document.getElementById('sortBy').value;
+        currentState.page = 1;
+        fetchAdverts();
+    });
+
+    document.getElementById('sortBy').addEventListener('change', () => {
+        currentState.sortBy = document.getElementById('sortBy').value;
         currentState.page = 1;
         fetchAdverts();
     });
@@ -112,8 +128,14 @@ function setupEventListeners() {
 
         document.getElementById('minPrice').value = '';
         document.getElementById('maxPrice').value = '';
+        document.getElementById('brandFilter').value = '';
+        document.getElementById('modelFilter').value = '';
+        document.getElementById('createdFrom').value = '';
+        document.getElementById('createdTo').value = '';
+        document.getElementById('sortBy').value = 'newest';
 
-        currentState = { search: '', categoryId: null, cityId: null, minPrice: null, maxPrice: null, page: 1, pageSize: 20 };
+        currentState = { search: '', categoryId: null, cityId: null, minPrice: null, maxPrice: null,
+            brand: '', model: '', createdFrom: '', createdTo: '', sortBy: 'newest', page: 1, pageSize: 20 };
 
         // Kategori aktif durumunu sıfırla
         document.querySelectorAll('#categoryList a').forEach(a => a.classList.remove('active'));
@@ -199,6 +221,11 @@ async function fetchAdverts() {
         if (currentState.cityId) params.append('cityId', currentState.cityId); // ŞEHİR PARAMETRESİ
         if (currentState.minPrice !== null) params.append('minPrice', currentState.minPrice);
         if (currentState.maxPrice !== null) params.append('maxPrice', currentState.maxPrice);
+        if (currentState.brand) params.append('brand', currentState.brand);
+        if (currentState.model) params.append('model', currentState.model);
+        if (currentState.createdFrom) params.append('createdFrom', currentState.createdFrom);
+        if (currentState.createdTo) params.append('createdTo', currentState.createdTo);
+        if (currentState.sortBy) params.append('sortBy', currentState.sortBy);
         params.append('page', currentState.page);
         params.append('pageSize', currentState.pageSize);
 
