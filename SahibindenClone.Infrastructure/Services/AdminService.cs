@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SahibindenClone.Application.DTOs;
+using SahibindenClone.Application.Helpers;
 using SahibindenClone.Application.Services;
 using SahibindenClone.Domain.Entities;
 using SahibindenClone.Domain.Enums;
@@ -24,7 +25,7 @@ public sealed class AdminService(ApplicationDbContext db) : IAdminService
         return await query.OrderByDescending(a => a.CreatedAt)
             .Select(a => new AdminAdvertDto(a.Id, a.Title, a.Description, a.Price,
                 a.User.FirstName + " " + a.User.LastName, a.Category.Name, a.City.Name,
-                (int)a.Status, StatusName(a.Status), a.CreatedAt,
+                (int)a.Status, StatusNameHelper.AdvertStatusName(a.Status), a.CreatedAt,
                 a.Images.OrderBy(i => i.SortOrder).Select(i => i.ImageUrl).FirstOrDefault()))
             .ToListAsync();
     }
@@ -39,7 +40,7 @@ public sealed class AdminService(ApplicationDbContext db) : IAdminService
             return ServiceResult<bool>.Failure(ServiceError.InvalidOperation, "Yalnızca onay bekleyen ilanlar karara bağlanabilir.");
         advert.Status = status;
         advert.UpdatedAt = DateTime.UtcNow;
-        AddAudit(adminUserId, status == AdvertStatus.Active ? "advert.approved" : "advert.rejected", "Advert", id, $"İlan {StatusName(status)} olarak işaretlendi.");
+        AddAudit(adminUserId, status == AdvertStatus.Active ? "advert.approved" : "advert.rejected", "Advert", id, $"İlan {StatusNameHelper.AdvertStatusName(status)} olarak işaretlendi.");
         await db.SaveChangesAsync();
         return ServiceResult<bool>.Success(true);
     }
@@ -148,9 +149,4 @@ public sealed class AdminService(ApplicationDbContext db) : IAdminService
         return null;
     }
 
-    private static string StatusName(AdvertStatus status) => status switch
-    {
-        AdvertStatus.Active => "Aktif", AdvertStatus.Sold => "Satıldı", AdvertStatus.Expired => "Süresi Doldu",
-        AdvertStatus.Rejected => "Reddedildi", _ => "Onay Bekliyor"
-    };
 }

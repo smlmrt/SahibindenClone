@@ -1,13 +1,15 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SahibindenClone.Application.Interfaces;
 using SahibindenClone.Infrastructure.Context;
 using SahibindenClone.Infrastructure.Repositories;
-using SahibindenClone.Infrastructure.Services; // Arka plan servisi için
+using SahibindenClone.Infrastructure.Services;
 using SahibindenClone.Application.Services;
 using SahibindenClone.WebUI.Errors;
+using SahibindenClone.WebUI.Hubs;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -98,6 +100,25 @@ builder.Services.AddScoped<INotificationService, SahibindenClone.WebUI.Services.
 // ARKA PLAN SERVİSİ: İlan süresi kontrolü (builder.Build()'den ÖNCE olmalıdır)
 builder.Services.AddHostedService<AdvertExpirationWorker>();
 builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, NameIdentifierUserIdProvider>();
+
+// CORS Konfigürasyonu
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+    options.AddPolicy("SignalR", policy =>
+    {
+        policy.SetIsOriginAllowed(_ => true)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
+});
 
 // API Controller'ları
 builder.Services.AddControllers(options => options.Filters.Add<ApiErrorResultFilter>())
@@ -164,6 +185,7 @@ app.UseStatusCodePages(async statusCodeContext =>
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.UseCors();
 app.UseRouting();
 
 // Authentication middleware'i Routing'den sonra, Authorization'dan önce gelmeli
@@ -171,6 +193,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers(); // API rotalarını aktifleştirir
-app.MapHub<SahibindenClone.WebUI.Hubs.NotificationHub>("/notificationHub");
+app.MapHub<NotificationHub>("/notificationHub")
+    .RequireCors("SignalR");
 
 app.Run();

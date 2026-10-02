@@ -13,7 +13,7 @@ namespace SahibindenClone.Infrastructure.Context
             {
                 var users = new User[]
                 {
-                    new User { FirstName = "Ahmet", LastName = "Yılmaz", Email = "sahibindenclone.test", PasswordHash="hash_placeholder", IsActive = true, CreatedAt = DateTime.UtcNow}
+                    new User { FirstName = "Ahmet", LastName = "Yılmaz", Email = "sahibindenclone.test", PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test1234"), IsActive = true, CreatedAt = DateTime.UtcNow}
                 };
 
                 context.Users.AddRange(users);

@@ -1,4 +1,5 @@
 using SahibindenClone.Application.DTOs;
+using SahibindenClone.Application.Helpers;
 using SahibindenClone.Application.Interfaces;
 using SahibindenClone.Application.Services;
 using SahibindenClone.Domain.Entities;
@@ -23,7 +24,7 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
             {
                 Id = a.Id, Title = a.Title, Price = a.Price, Brand = a.Brand, Model = a.Model, CategoryName = a.Category?.Name ?? "Kategorisiz",
                 CityName = a.City?.Name ?? "Belirtilmemiş", UserName = $"{a.User?.FirstName} {a.User?.LastName}",
-                Status = (int)a.Status, StatusName = StatusName(a.Status), CreatedAt = a.CreatedAt,
+                Status = (int)a.Status, StatusName = StatusNameHelper.AdvertStatusName(a.Status), CreatedAt = a.CreatedAt,
                 ImageUrl = MainImage(a.Images)
             }).ToList(),
             TotalCount = count, Page = page, PageSize = pageSize
@@ -35,7 +36,7 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
         var a = await adverts.GetAdvertWithDetailsByIdAsync(id);
         return a is null || a.Status is AdvertStatus.PendingApproval or AdvertStatus.Rejected ? null : new AdvertDetailDto(a.Id, a.Title, a.Price, a.Description, a.Brand, a.Model, a.CategoryId,
             a.Category?.Name ?? "Kategorisiz", a.CityId, a.City?.Name ?? "Belirtilmemiş",
-            $"{a.User?.FirstName} {a.User?.LastName}", a.UserId, (int)a.Status, StatusName(a.Status), a.CreatedAt,
+            $"{a.User?.FirstName} {a.User?.LastName}", a.UserId, (int)a.Status, StatusNameHelper.AdvertStatusName(a.Status), a.CreatedAt,
             a.Images.OrderBy(i => i.SortOrder).Select(i => new AdvertImageDto(i.Id, i.ImageUrl, i.IsMain, i.SortOrder)).ToList());
     }
 
@@ -142,10 +143,4 @@ public sealed class AdvertService(IAdvertRepository adverts, INotificationServic
 
     private static string? MainImage(IEnumerable<AdvertImage>? images) => images?.OrderBy(i => i.SortOrder).FirstOrDefault(i => i.IsMain)?.ImageUrl
         ?? images?.OrderBy(i => i.SortOrder).FirstOrDefault()?.ImageUrl;
-
-    private static string StatusName(AdvertStatus status) => status switch
-    {
-        AdvertStatus.Active => "Aktif", AdvertStatus.Sold => "Satıldı", AdvertStatus.Expired => "Süresi Doldu",
-        AdvertStatus.Rejected => "Reddedildi", _ => "Onay Bekliyor"
-    };
 }

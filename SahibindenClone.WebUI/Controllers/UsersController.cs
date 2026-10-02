@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SahibindenClone.Application.DTOs;
 using SahibindenClone.Application.Interfaces;
 using SahibindenClone.Application.Services;
+using System.Security.Claims;
 
 namespace SahibindenClone.WebUI.Controllers
 {
@@ -33,12 +35,15 @@ namespace SahibindenClone.WebUI.Controllers
                 return NotFound("Kullanıcı bulunamadı.");
             }
 
+            // Email yalnızca profil sahibine gösterilir (kişisel veri koruması)
+            var isOwner = int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var currentUserId) && currentUserId == id;
+
             var profileDto = new UserProfileDto
             {
                 Id = user.Id,
                 FirstName = user.FirstName,
                 LastName = user.LastName,
-                Email = user.Email,
+                Email = isOwner ? user.Email : null,
                 CreatedAt = user.CreatedAt,
                 Adverts = user.Adverts.Select(a => new AdvertListDto
                 {
@@ -57,9 +62,15 @@ namespace SahibindenClone.WebUI.Controllers
 
         /// PUT: api/users/{id}/profile
         /// Kullanıcı profil bilgilerini (ve istenirse şifresini) günceller
+        [Authorize]
         [HttpPut("{id}/profile")]
         public async Task<IActionResult> UpdateUserProfile(int id, [FromBody] UserProfileUpdateDto dto)
         {
+            // Token sahibi yalnızca kendi profilini güncelleyebilir
+            if (!int.TryParse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var tokenUserId))
+                return Unauthorized(new { Message = "Geçersiz kullanıcı bilgisi." });
+            if (tokenUserId != id)
+                return StatusCode(403, new { Message = "Yalnızca kendi profilinizi güncelleyebilirsiniz." });
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
@@ -82,14 +93,14 @@ namespace SahibindenClone.WebUI.Controllers
                 }
             }
 
-            // Basit şifre değişikliği mantığı (Gerçek bir projede hash'lenmeli)
+            // Şifre değişikliği — BCrypt ile doğrulama ve hash'leme
             if (!string.IsNullOrEmpty(dto.CurrentPassword) && !string.IsNullOrEmpty(dto.NewPassword))
             {
-                if (user.PasswordHash != dto.CurrentPassword)
+                if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
                 {
                     return BadRequest(new { Message = "Mevcut şifreniz hatalı." });
                 }
-                user.PasswordHash = dto.NewPassword;
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
             }
 
             // Bilgileri güncelle

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SahibindenClone.Application.DTOs;
+using SahibindenClone.Application.Helpers;
 using SahibindenClone.Application.Services;
 using SahibindenClone.Domain.Entities;
 using SahibindenClone.Domain.Enums;
@@ -16,7 +17,7 @@ public sealed class PurchaseService(ApplicationDbContext db) : IPurchaseService
         if (advert.Status != AdvertStatus.Active) return ServiceResult<int>.Failure(ServiceError.InvalidOperation, "Yalnızca aktif ilanlar için satın alma talebi oluşturulabilir.");
         if (advert.UserId == buyerId) return ServiceResult<int>.Failure(ServiceError.InvalidOperation, "Kendi ilanınız için satın alma talebi oluşturamazsınız.");
         if (await db.PurchaseTransactions.AnyAsync(t => t.AdvertId == advertId && t.BuyerId == buyerId &&
-                t.Status is PurchaseStatus.Requested or PurchaseStatus.Accepted))
+                (t.Status == PurchaseStatus.Requested || t.Status == PurchaseStatus.Accepted)))
             return ServiceResult<int>.Failure(ServiceError.Conflict, "Bu ilan için zaten yanıt bekleyen veya kabul edilmiş bir talebiniz var.");
 
         var transaction = new PurchaseTransaction
@@ -37,7 +38,7 @@ public sealed class PurchaseService(ApplicationDbContext db) : IPurchaseService
             .OrderByDescending(t => t.CreatedAt).ToListAsync();
         return transactions.Select(t => new PurchaseDto(t.Id, t.AdvertId, t.Advert.Title,
             t.BuyerId, $"{t.Buyer.FirstName} {t.Buyer.LastName}", t.SellerId, $"{t.Seller.FirstName} {t.Seller.LastName}",
-            (int)t.Status, StatusName(t.Status), t.CreatedAt, t.CompletedAt,
+            (int)t.Status, StatusNameHelper.PurchaseStatusName(t.Status), t.CreatedAt, t.CompletedAt,
             t.Status == PurchaseStatus.Completed && t.BuyerId == userId && t.Review is null, t.Review is not null)).ToList();
     }
 
@@ -108,11 +109,4 @@ public sealed class PurchaseService(ApplicationDbContext db) : IPurchaseService
         return new SellerReviewSummaryDto(sellerId, reviews.Count == 0 ? 0 : reviews.Average(r => r.Rating), reviews.Count, result);
     }
 
-    private static string StatusName(PurchaseStatus status) => status switch
-    {
-        PurchaseStatus.Requested => "Satıcı yanıtı bekleniyor",
-        PurchaseStatus.Accepted => "Satıcı kabul etti, alıcı onayı bekleniyor",
-        PurchaseStatus.Rejected => "Reddedildi",
-        _ => "Tamamlandı"
-    };
 }
