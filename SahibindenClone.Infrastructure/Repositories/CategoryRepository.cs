@@ -17,5 +17,21 @@ namespace SahibindenClone.Infrastructure.Repositories
                 .OrderBy(c => c.Name)
                 .ToListAsync();
         }
+
+        public async Task<IEnumerable<Category>> GetAllCategoriesWithDetailsAsync()
+        {
+            return await _context.Categories
+                .AsNoTracking()
+                .Include(c => c.Parent)
+                .Include(c => c.Adverts)
+                .OrderBy(c => c.Name)
+                .ToListAsync();
+        }
+
+        public async Task<bool> HasActiveSubCategoriesAsync(int parentId)
+        {
+            return await _context.Categories
+                .AnyAsync(c => c.ParentId == parentId && c.IsActive);
+        }
     }
 }

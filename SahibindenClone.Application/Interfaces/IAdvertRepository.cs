@@ -1,4 +1,5 @@
 using SahibindenClone.Domain.Entities;
+using SahibindenClone.Domain.Enums;
 
 namespace SahibindenClone.Application.Interfaces
 {
@@ -7,6 +8,7 @@ namespace SahibindenClone.Application.Interfaces
         Task<IEnumerable<Advert>> GetAdvertsWithDetailsAsync();
         Task<Advert?> GetAdvertWithDetailsByIdAsync(int id);
         Task<IEnumerable<Advert>> GetAdvertsByCategoryIdAsync(int categoryId);
+        Task<IReadOnlyList<Advert>> GetAdvertsForAdminAsync(AdvertStatus? status);
         Task AddChangeHistoryAsync(AdvertChangeHistory history);
         Task<IReadOnlyList<AdvertChangeHistory>> GetChangeHistoryAsync(int advertId);
 

@@ -24,5 +24,14 @@ namespace SahibindenClone.Infrastructure.Repositories
             return await _context.Users
                 .FirstOrDefaultAsync(u => u.Email.ToLower() == email.ToLower() && u.IsActive);
         }
+
+        public async Task<IEnumerable<User>> GetAllUsersWithAdvertsAsync()
+        {
+            return await _context.Users
+                .AsNoTracking()
+                .Include(u => u.Adverts)
+                .OrderByDescending(u => u.CreatedAt)
+                .ToListAsync();
+        }
     }
 }

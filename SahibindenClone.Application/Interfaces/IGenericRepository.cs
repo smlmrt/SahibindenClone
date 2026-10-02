@@ -10,6 +10,8 @@ namespace SahibindenClone.Application.Interfaces
         Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate);
         Task AddAsync(T entity);
         Task<int> SaveChangesAsync();
+        Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null);
+        Task<bool> AnyAsync(Expression<Func<T, bool>> predicate);
         void Update(T entity);
         void Delete(T entity);
     }

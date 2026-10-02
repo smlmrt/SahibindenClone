@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SahibindenClone.Application.Interfaces;
 using SahibindenClone.Domain.Entities;
+using SahibindenClone.Domain.Enums;
 using SahibindenClone.Infrastructure.Context;
 
 namespace SahibindenClone.Infrastructure.Repositories
@@ -8,6 +9,24 @@ namespace SahibindenClone.Infrastructure.Repositories
     public class AdvertRepository : GenericRepository<Advert>, IAdvertRepository
     {
         public AdvertRepository(ApplicationDbContext context) : base(context) { }
+
+        public async Task<IReadOnlyList<Advert>> GetAdvertsForAdminAsync(AdvertStatus? status)
+        {
+            var query = _context.Adverts
+                .AsNoTracking()
+                .Include(a => a.User)
+                .Include(a => a.Category)
+                .Include(a => a.City)
+                .Include(a => a.Images)
+                .Where(a => a.IsActive);
+
+            if (status.HasValue)
+                query = query.Where(a => a.Status == status.Value);
+
+            return await query
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
+        }
 
         public async Task AddChangeHistoryAsync(AdvertChangeHistory history) => await _context.AdvertChangeHistories.AddAsync(history);
 

@@ -9,5 +9,8 @@ namespace SahibindenClone.Application.Interfaces
 
         // Email'e göre kullanıcı getir
         Task<User?> GetUserByEmailAsync(string email);
+
+        // Admin paneli: Tüm kullanıcılar ve ilan sayıları
+        Task<IEnumerable<User>> GetAllUsersWithAdvertsAsync();
     }
 }

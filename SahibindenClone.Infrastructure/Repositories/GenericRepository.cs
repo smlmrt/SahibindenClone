@@ -27,6 +27,12 @@ namespace SahibindenClone.Infrastructure.Repositories
         public async Task AddAsync(T entity) => await _dbSet.AddAsync(entity);
         public async Task<int> SaveChangesAsync() => await _context.SaveChangesAsync();
         
+        public async Task<int> CountAsync(Expression<Func<T, bool>>? predicate = null)
+            => predicate is null ? await _dbSet.CountAsync() : await _dbSet.CountAsync(predicate);
+        
+        public async Task<bool> AnyAsync(Expression<Func<T, bool>> predicate)
+            => await _dbSet.AnyAsync(predicate);
+        
         public void Update(T entity) => _dbSet.Update(entity);
         
         public void Delete(T entity) => _dbSet.Remove(entity);
